@@ -47,6 +47,29 @@ bun run tauri dev
 
 所有状态（任务进度 / 积分 / 日记 / 记账 / 商店）存浏览器 `localStorage`，键 `zhenyuan_quest_v1`。可在大端底部 **导出存档** 备份 JSON。
 
+## 织（Zhi）联动
+
+日记 panel 通过 HTTP 桥接共写到[织](https://github.com/zhenyuan/zhi)（共写日记 app，跑在 `127.0.0.1:3000`）。**织一行代码不动**，norvera 只是织的另一个视图入口。
+
+- **双写**：写日记时本地 + 织都存一份，本地记录 `zhiId` 防止重复迁移
+- **合并展示**：渲染时把本地日记 + 织里所有条目（含 silicon 的批注）按日期分组展示
+- **气泡云日历**：日期作为浮动气泡，条目越多气泡越大，hover 时晃动
+- **迁移**：把现有本地日记一次性同步到织（zhi-bar 的「迁移本地日记 →」按钮）
+
+### 作者名（跨 origin 限制）
+
+织的作者显示名存在它前端的 `localStorage`（key 命名空间 `zhi:name:carbon` / `zhi:name:silicon`）。norvera 是 Tauri webview（origin `tauri://localhost`），织前端是 web app（origin `http://localhost:5173` 或 `:3000`），**浏览器 localStorage 是 origin-scoped 的，norvera 没法直接 fetch 织前端的设置**。
+
+所以 norvera 提供独立的「作者名」按钮（zhi-bar 右侧），在 norvera 这边再设一次（用同样的 key 命名空间），输入和织那边一样的名字即可保持同调。默认 fallback 是 `Carbon` / `Silicon`。
+
+### 织 server 需要在跑
+
+```bash
+cd ~/repos/zhi && bun run dev
+```
+
+跑了才能联动。zhi-bar 顶部的 "织 · 已连接（N 条）" / "织 · 未连接" 显示当前状态，点 ↻ 可重试。
+
 ## 设计 / 工程分工
 
 - UI 视觉：[Claude Design](https://claude.ai)（三栏 / 八房撞色 / 五调色板 / 章鱼麻薯吉祥物）

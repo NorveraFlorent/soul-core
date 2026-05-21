@@ -165,7 +165,7 @@ body::before {
 .window {
   display: grid;
   grid-template-columns: 196px 1fr;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: 1fr 80px;
   grid-template-areas:
     "side main"
     "side cc  ";
@@ -218,9 +218,52 @@ body::before {
 .b-cc   {
   padding: 12px 22px 12px 18px;
   flex-direction: row;
-  align-items: center;
+  align-items: stretch;
   gap: 18px;
   height: 80px;
+  overflow: hidden;
+  transition:
+    height 0.35s cubic-bezier(0.4, 0.2, 0.2, 1),
+    width 0.35s cubic-bezier(0.4, 0.2, 0.2, 1),
+    bottom 0.35s cubic-bezier(0.4, 0.2, 0.2, 1),
+    right 0.35s cubic-bezier(0.4, 0.2, 0.2, 1),
+    box-shadow 0.35s ease,
+    border-radius 0.35s ease;
+}
+.b-cc .cc-portrait { align-self: center; }
+
+/* 「弹出」：聊天框从底部浮起，main 不被挤（grid 行高用 80px 固定 + cc 改 position fixed） */
+.b-cc.expanded {
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  left: auto;
+  top: auto;
+  width: clamp(420px, 56vw, 760px);
+  height: clamp(360px, 62vh, 720px);
+  z-index: 100;
+  border-radius: 18px;
+  box-shadow:
+    0 24px 64px color-mix(in srgb, black 36%, transparent),
+    0 0 0 0.5px color-mix(in srgb, white 40%, transparent) inset;
+  flex-direction: column;
+  align-items: stretch;
+}
+.b-cc.expanded .cc-portrait {
+  align-self: flex-start;
+  flex-direction: row;
+}
+.b-cc.expanded .cc-divider {
+  width: 100%;
+  height: 1px;
+  margin: 8px 0;
+}
+.b-cc.expanded .cc-messages {
+  flex: 1;
+  justify-content: flex-start;
+}
+.b-cc.expanded .cc-input-row {
+  width: 100%;
 }
 
 /* 主区 (透明，让窗体撞色直接透出) */
@@ -701,6 +744,208 @@ body::before {
 }
 .journal-save:hover { opacity: 0.85; }
 .journal-history { margin-top: 22px; }
+
+/* ───────────── 织联动 ───────────── */
+.zhi-bar {
+  display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px; margin: 8px 0 12px;
+  background: color-mix(in srgb, var(--backdrop-top) 60%, transparent);
+  border: 0.5px solid color-mix(in srgb, black 8%, transparent);
+  border-radius: 10px;
+  font-size: 12px;
+}
+.zhi-status { font-family: 'Cormorant Garamond', serif; letter-spacing: 1px; }
+.zhi-status.zhi-ok    { color: var(--jade, #5a8a7a); }
+.zhi-status.zhi-bad   { color: var(--crimson, #a85a5a); }
+.zhi-status.zhi-dim   { color: var(--ink-faint, #888); }
+.zhi-toggle { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.zhi-toggle input { accent-color: var(--accent-warm, #c9a961); }
+.zhi-refresh, .zhi-migrate {
+  background: transparent;
+  border: 0.5px solid color-mix(in srgb, black 14%, transparent);
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.zhi-refresh:hover, .zhi-migrate:hover {
+  background: color-mix(in srgb, var(--accent-warm) 14%, transparent);
+}
+.zhi-migrate:disabled, .zhi-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+.zhi-date {
+  background: transparent;
+  border: 0.5px solid color-mix(in srgb, black 14%, transparent);
+  border-radius: 8px;
+  padding: 3px 8px;
+  font: inherit;
+  color: inherit;
+  color-scheme: light dark;
+}
+
+/* 条目头：作者名 + 来源标签 */
+.entry-head {
+  display: flex; align-items: baseline; gap: 10px;
+  margin-bottom: 6px;
+}
+.entry-author {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+}
+.journal-entry[data-author="silicon"] .entry-author {
+  color: var(--accent-warm, #c9a961);
+}
+.journal-entry[data-author="silicon"] {
+  border-left: 2px solid color-mix(in srgb, var(--accent-warm, #c9a961) 50%, transparent);
+  padding-left: 10px;
+}
+
+/* 织条目 vs 本地条目区别 */
+.journal-entry[data-source="zhi"] {
+  border-left: 2px solid color-mix(in srgb, var(--accent-warm, #c9a961) 60%, transparent);
+  padding-left: 10px;
+}
+.journal-entry .src-tag {
+  display: inline-block; margin-left: 8px;
+  font-size: 10px; letter-spacing: 1px;
+  color: var(--ink);
+  opacity: 0.8;
+  font-family: 'Cormorant Garamond', serif;
+}
+.journal-entry .zhi-annotation {
+  margin-top: 8px; padding: 8px 10px;
+  background: color-mix(in srgb, var(--backdrop-top) 40%, transparent);
+  border-left: 1px solid color-mix(in srgb, black 16%, transparent);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.zhi-annotation .ann-author {
+  font-size: 10px; letter-spacing: 1px;
+  color: var(--ink-faint, #888);
+  margin-bottom: 4px;
+}
+
+/* ───────────── 日记按日分组 ───────────── */
+.day-group {
+  margin-bottom: 6px;
+  border-bottom: 0.5px solid color-mix(in srgb, black 8%, transparent);
+}
+.day-group:last-child { border-bottom: none; }
+.day-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 4px;
+  cursor: pointer;
+  font-family: 'Cormorant Garamond', serif;
+  user-select: none;
+  transition: opacity 0.15s;
+}
+.day-header:hover { opacity: 0.7; }
+.day-arrow {
+  display: inline-block;
+  width: 14px;
+  font-size: 12px;
+  color: var(--ink-soft, #888);
+  transition: transform 0.15s;
+}
+.day-date {
+  font-size: 14px;
+  color: var(--ink-soft, #b8b4a8);
+  letter-spacing: 0.12em;
+  flex: 1;
+}
+.day-count {
+  font-size: 11px;
+  color: var(--ink-faint, #888);
+  letter-spacing: 0.1em;
+}
+.day-body { padding: 0 0 12px 24px; }
+.day-body .journal-entry { margin-bottom: 12px; padding-top: 4px; }
+.day-body .journal-entry:last-child { margin-bottom: 0; }
+.day-group.day-highlight {
+  background: color-mix(in srgb, var(--accent-warm, #c9a961) 16%, transparent);
+  transition: background 1.5s ease-out;
+}
+
+/* ───────────── 气泡云日历（梦幻浮动 · 位置随机） ───────────── */
+.zhi-bubble-cloud {
+  position: relative;
+  height: 240px;
+  padding: 0;
+  margin: 8px 0 18px;
+  border-bottom: 0.5px solid color-mix(in srgb, black 6%, transparent);
+  overflow: hidden;
+}
+.zhi-bubble {
+  position: absolute;
+  width: var(--bsz, 48px);
+  height: var(--bsz, 48px);
+  border-radius: 50%;
+  border: 0.5px solid color-mix(in srgb, var(--accent-warm, #c9a961) 40%, transparent);
+  background:
+    radial-gradient(circle at 30% 30%,
+      color-mix(in srgb, white 30%, transparent),
+      color-mix(in srgb, var(--accent-warm, #c9a961) 14%, transparent));
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer;
+  font-family: 'Cormorant Garamond', serif;
+  color: var(--ink);
+  padding: 0;
+  box-shadow:
+    0 4px 10px color-mix(in srgb, var(--accent-warm, #c9a961) 18%, transparent),
+    inset 0 0 0 0.5px color-mix(in srgb, white 32%, transparent);
+  transition: box-shadow 0.3s ease, filter 0.3s ease;
+  /* 提示浏览器单独合成层 → GPU 加速 transform 动画，60fps */
+  will-change: transform;
+  transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg));
+  backface-visibility: hidden;
+  animation: bubble-float 5s ease-in-out infinite;
+}
+
+@keyframes bubble-float {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg)); }
+  50%      { transform: translate3d(0, -5px, 0) rotate(var(--rot, 0deg)); }
+}
+.zhi-bubble.today {
+  background:
+    radial-gradient(circle at 30% 30%,
+      color-mix(in srgb, white 40%, transparent),
+      color-mix(in srgb, var(--accent-warm, #c9a961) 38%, transparent));
+  border-color: var(--accent-warm, #c9a961);
+  box-shadow:
+    0 6px 16px color-mix(in srgb, var(--accent-warm, #c9a961) 38%, transparent),
+    inset 0 0 0 0.5px color-mix(in srgb, white 40%, transparent);
+}
+.zhi-bubble:hover {
+  animation: bubble-wiggle 0.6s ease-in-out;
+  filter: brightness(1.08);
+  box-shadow:
+    0 8px 22px color-mix(in srgb, var(--accent-warm, #c9a961) 32%, transparent),
+    inset 0 0 0 0.5px color-mix(in srgb, white 50%, transparent);
+  z-index: 2;
+}
+@keyframes bubble-wiggle {
+  0%, 100% { transform: translate3d(0, -2px, 0) rotate(var(--rot, 0deg)); }
+  20%      { transform: translate3d(0, -3px, 0) rotate(calc(var(--rot, 0deg) - 7deg)) scale(1.08); }
+  40%      { transform: translate3d(0, -1px, 0) rotate(calc(var(--rot, 0deg) + 5deg)) scale(1.1); }
+  60%      { transform: translate3d(0, -3px, 0) rotate(calc(var(--rot, 0deg) - 3deg)) scale(1.06); }
+  80%      { transform: translate3d(0, -1px, 0) rotate(calc(var(--rot, 0deg) + 2deg)) scale(1.04); }
+}
+.bub-date {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+  color: var(--ink);
+}
+.bub-count {
+  font-size: 10px;
+  color: var(--ink-soft, #888);
+  margin-top: 2px;
+  letter-spacing: 0.04em;
+}
 .journal-entry {
   background: var(--card);
   padding: 14px;
@@ -711,7 +956,7 @@ body::before {
 .journal-date {
   font-family: var(--serif-en);
   font-size: 11px;
-  color: var(--ink-faint);
+  color: var(--ink);
   letter-spacing: 0.16em;
   margin-bottom: 6px;
 }
@@ -975,12 +1220,33 @@ body::before {
 }
 .cc-state .dot {
   display: inline-block;
-  width: 5px; height: 5px;
+  width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--celadon);
   margin-right: 5px;
   vertical-align: 1px;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--celadon) 60%, transparent);
+  will-change: opacity, box-shadow;
+  animation: cc-dot-breath 2.4s ease-in-out infinite;
 }
+@keyframes cc-dot-breath {
+  0%, 100% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--celadon) 50%, transparent);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--celadon) 0%, transparent);
+  }
+}
+/* CC 在想/在写时呼吸节奏更快 */
+[data-state="thinking"] ~ .cc-state .dot,
+.cc-state:has(+ *)  /* placeholder */ {
+}
+.b-cc:has(#clawd[data-state="thinking"]) .cc-state .dot { animation-duration: 1.2s; background: var(--accent-warm, #c9a961); }
+.b-cc:has(#clawd[data-state="typing"]) .cc-state .dot   { animation-duration: 0.8s; background: var(--accent-warm, #c9a961); }
+.b-cc:has(#clawd[data-state="happy"]) .cc-state .dot    { background: var(--jade, #5a8a7a); }
+.b-cc:has(#clawd[data-state="error"]) .cc-state .dot    { background: var(--crimson, #a85a5a); animation-duration: 1.6s; }
 .cc-divider {
   width: 1px;
   height: 36px;
@@ -996,7 +1262,8 @@ body::before {
   overflow: hidden;
 }
 /* 横栏里只显示最新一条 — 老消息进 panel-cc 历史 */
-.cc-messages > .cc-msg:not(:last-child) { display: none; }
+.cc-messages { overflow-y: auto; }
+.cc-messages > .cc-msg { margin-bottom: 8px; }
 .cc-msg {
   font-family: var(--serif);
   font-size: 13.5px;
@@ -1017,11 +1284,28 @@ body::before {
 .cc-msg.cc .who { color: #c87a4a; }
 .cc-msg .text {
   color: color-mix(in srgb, #2a2820 88%, transparent);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.6;
 }
 .cc-msg.me .text { color: #2a2820; }
+.cc-msg.pending .text { opacity: 0.55; font-style: italic; }
+.cc-msg.error .text { color: var(--crimson, #a85a5a); }
+
+.cc-new-session {
+  background: transparent;
+  border: 0.5px solid color-mix(in srgb, black 14%, transparent);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.cc-new-session:hover { opacity: 1; }
 
 .cc-input-row {
   width: 320px;
@@ -1034,11 +1318,19 @@ body::before {
   gap: 8px;
   flex-shrink: 0;
 }
+.cc-input-row textarea {
+  resize: none;
+  min-height: 1.4em;
+  max-height: 12em;
+  line-height: 1.5;
+}
+.b-cc.expanded .cc-input-row textarea { max-height: 20em; min-height: 2.6em; }
 .cc-input-row:focus-within {
   border-color: color-mix(in srgb, #c87a4a 50%, transparent);
   background: color-mix(in srgb, #2a2820 2%, transparent);
 }
-.cc-input-row input {
+.cc-input-row input,
+.cc-input-row textarea {
   flex: 1;
   background: none;
   border: none;
@@ -1048,7 +1340,8 @@ body::before {
   font-size: 13px;
   min-width: 0;
 }
-.cc-input-row input::placeholder {
+.cc-input-row input,
+.cc-input-row textarea::placeholder {
   color: color-mix(in srgb, #2a2820 40%, transparent);
   font-style: italic;
 }
@@ -1309,6 +1602,17 @@ body::before {
 
     <div class="panel" id="panel-journal">
       <div class="record-title">今日笔记</div>
+
+      <div class="zhi-bar">
+        <span class="zhi-status zhi-dim" id="zhi-status">织 · 检查中…</span>
+        <label class="zhi-toggle"><input type="checkbox" id="zhi-sync-on" checked> <span>双写到织</span></label>
+        <label class="zhi-toggle"><input type="checkbox" id="zhi-show-on" checked> <span>显示织条目</span></label>
+        <input type="date" id="zhi-jump-date" class="zhi-date" title="跳转到某天">
+        <button class="zhi-refresh" id="zhi-refresh" title="重新连接 / 拉取织">↻</button>
+        <button class="zhi-refresh" id="zhi-names" title="设置作者名（与织同 key）">作者名</button>
+        <button class="zhi-migrate" id="zhi-migrate" title="把现有本地日记一次性同步到织">迁移本地日记 →</button>
+      </div>
+
       <textarea class="journal-input" id="journal-input" placeholder="两三句话即可。今日做了什么、想了什么、感受到了什么。"></textarea>
       <button class="journal-save" id="journal-save">收笔</button>
       <div class="journal-history" id="journal-history"></div>
@@ -1377,26 +1681,14 @@ body::before {
       <div class="cc-meta">
         <div class="cc-name">CC</div>
         <div class="cc-state"><span class="dot"></span>在听</div>
+        <button class="cc-new-session" id="cc-new-session" title="开启新对话（保留旧 session 文件，新 UUID）">新对话</button>
       </div>
     </div>
     <div class="cc-divider"></div>
-    <div class="cc-messages" id="cc-messages">
-      <div class="cc-msg cc">
-        <div class="who">CC · 07:42</div>
-        <div class="text">今天的静坐怎样？</div>
-      </div>
-      <div class="cc-msg me">
-        <div class="who">我 · 07:43</div>
-        <div class="text">杂念多，第七分钟才静下来。</div>
-      </div>
-      <div class="cc-msg cc">
-        <div class="who">CC · 07:44</div>
-        <div class="text">杂念也是流过的风，让它走。要不要写两行进日记？</div>
-      </div>
-    </div>
+    <div class="cc-messages" id="cc-messages"></div>
     <div class="cc-input-row">
-      <input id="cc-input" placeholder="对 CC 说……" />
-      <span class="send">↵</span>
+      <textarea id="cc-input" placeholder="对 CC 说……（Shift+Enter 换行）" rows="1"></textarea>
+      <span class="send" id="cc-send">↵</span>
     </div>
   </aside>
 
@@ -1593,6 +1885,9 @@ const ENCOURAGEMENTS_MINUS = [
 
 const STORAGE_KEY = 'zhenyuan_quest_v1';
 
+// 织桥接状态（提前声明避免 renderJournal/saveJournal TDZ）
+var zhiState = { available: false, entries: [] };
+
 const defaultState = {
   points: 0,
   totalEarned: 0,
@@ -1761,22 +2056,152 @@ function renderRecord() {
   history.innerHTML = entries.length ? entries.join('') : '<div class="empty-state">尚无记录</div>';
 }
 
+// 读 author 显示名 —— 与织共享 localStorage key 命名空间
+function zhiAuthorName(id) {
+  try { const v = localStorage.getItem(`zhi:name:${id}`); if (v) return v; } catch {}
+  return id === 'carbon' ? 'Carbon' : (id === 'silicon' ? 'Silicon' : id);
+}
+
+function renderEntry(e) {
+  const authorName = zhiAuthorName(e.author);
+  const sourceTag = e.source === 'zhi'
+    ? '织'
+    : (e.zhiId ? '本地 ↔ 织' : '本地');
+  const del = e.source === 'local'
+    ? `<button onclick="deleteJournal(${e.localIdx})" style="background:none;border:none;color:var(--ink-faint);font-size:11px;margin-top:6px;cursor:pointer;letter-spacing:1px;">删除</button>`
+    : '';
+  const anns = (e.annotations || []).map(a => `
+    <div class="zhi-annotation">
+      <div class="ann-author">${escapeHtml(zhiAuthorName(a.author))} · 批注</div>
+      <div>${escapeHtml(a.content)}</div>
+    </div>
+  `).join('');
+  return `
+    <div class="journal-entry" data-source="${e.source}" data-author="${e.author}">
+      <div class="entry-head">
+        <span class="entry-author">${escapeHtml(authorName)}</span>
+        <span class="src-tag">${sourceTag}</span>
+      </div>
+      <div class="journal-text">${escapeHtml(e.text)}</div>
+      ${anns}
+      ${del}
+    </div>
+  `;
+}
+
+function formatDateZh(dateStr) {
+  // "2026-05-21" -> "5 月 21 日 · 周四"
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const wk = ['日', '一', '二', '三', '四', '五', '六'][date.getDay()];
+  return `${m} 月 ${d} 日 · 周${wk}`;
+}
+
+function toggleDay(date) {
+  const group = document.querySelector(`.day-group[data-date="${date}"]`);
+  if (!group) return;
+  const body = group.querySelector('.day-body');
+  const arrow = group.querySelector('.day-arrow');
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  arrow.textContent = isOpen ? '▸' : '▾';
+  group.classList.toggle('open', !isOpen);
+}
+
 function renderJournal() {
   const history = document.getElementById('journal-history');
-  if (!state.journal.length) {
+  if (!history) return;
+  const showZhi = document.getElementById('zhi-show-on')?.checked && zhiState.available;
+
+  // 本地条目
+  const local = state.journal.map((e, idx) => ({
+    source: 'local',
+    localIdx: idx,
+    date: e.date,
+    text: e.text,
+    createdAt: e.time || (e.date + 'T00:00:00Z'),
+    annotations: [],
+    zhiId: e.zhiId,
+    author: 'carbon'
+  }));
+
+  // 织条目（如果开启 + 健康）
+  const zhi = showZhi ? zhiState.entries.map(z => ({
+    source: 'zhi',
+    zhiId: z.id,
+    date: z.date,
+    text: z.content,
+    createdAt: z.createdAt,
+    author: z.author,
+    annotations: z.annotations || []
+  })) : [];
+
+  // 去重：如果本地条目有 zhiId 对应织里的，跳过织那一份
+  const localZhiIds = new Set(local.map(l => l.zhiId).filter(Boolean));
+  const zhiFiltered = zhi.filter(z => !localZhiIds.has(z.zhiId));
+
+  const merged = [...local, ...zhiFiltered].sort((a, b) =>
+    String(b.createdAt).localeCompare(String(a.createdAt))
+  );
+
+  if (!merged.length) {
     history.innerHTML = '<div class="empty-state">尚未落笔</div>';
     return;
   }
-  history.innerHTML = state.journal.slice().reverse().map((entry, idx) => {
-    const realIdx = state.journal.length - 1 - idx;
+
+  // 按日期分组
+  const byDate = {};
+  for (const e of merged) (byDate[e.date] = byDate[e.date] || []).push(e);
+  const dates = Object.keys(byDate).sort().reverse();
+  const today = todayStr();
+
+  // 气泡云：每天一个气泡，条目越多气泡越大；位置随机散布在一片浮动云区
+  const maxCnt = Math.max(...dates.map(d => byDate[d].length), 1);
+  const bubblesHTML = `
+    <div class="zhi-bubble-cloud" aria-label="日历气泡">
+      ${dates.slice().reverse().map(date => {
+        const cnt = byDate[date].length;
+        const size = 38 + Math.round((cnt / maxCnt) * 38);  // 38-76px
+        const [_, m, d] = date.split('-');
+        const isToday = date === today;
+        // 随机位置：x 用百分比（留 size buffer），y 用像素（容器高度固定）
+        const xPct = Math.random() * 78 + 2;     // 2%-80%
+        const yPx = Math.random() * 160 + 12;    // 12-172px（容器 240px - 气泡最大 76px - padding）
+        // 微旋转让整体更不规整
+        const rot = (Math.random() - 0.5) * 16;  // -8° ~ 8°
+        // 浮动 phase 错开
+        const delay = -(Math.random() * 5).toFixed(2);
+        return `
+          <button class="zhi-bubble ${isToday ? 'today' : ''}" data-date="${date}"
+                  style="--bsz: ${size}px; left: ${xPct.toFixed(2)}%; top: ${yPx.toFixed(0)}px; --rot: ${rot.toFixed(1)}deg; animation-delay: ${delay}s;"
+                  onclick="zhiJumpToDate('${date}')"
+                  title="${formatDateZh(date)} · ${cnt} 条">
+            <span class="bub-date">${parseInt(m)}/${parseInt(d)}</span>
+            <span class="bub-count">${cnt}</span>
+          </button>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  const listHTML = dates.map(date => {
+    const entries = byDate[date];
+    const isOpen = date === today;
     return `
-      <div class="journal-entry">
-        <div class="journal-date">${entry.date}</div>
-        <div class="journal-text">${escapeHtml(entry.text)}</div>
-        <button onclick="deleteJournal(${realIdx})" style="background:none;border:none;color:var(--ink-faint);font-size:11px;margin-top:6px;cursor:pointer;letter-spacing:1px;">删除</button>
+      <div class="day-group ${isOpen ? 'open' : ''}" data-date="${date}">
+        <div class="day-header" onclick="toggleDay('${date}')">
+          <span class="day-arrow">${isOpen ? '▾' : '▸'}</span>
+          <span class="day-date">${formatDateZh(date)}</span>
+          <span class="day-count">${entries.length} 条</span>
+        </div>
+        <div class="day-body" style="display:${isOpen ? 'block' : 'none'}">
+          ${entries.map(renderEntry).join('')}
+        </div>
       </div>
     `;
   }).join('');
+
+  history.innerHTML = bubblesHTML + listHTML;
 }
 
 function renderLedger() {
@@ -1903,15 +2328,32 @@ function setRecord(type, val) {
   renderRecord();
 }
 
-function saveJournal() {
+async function saveJournal() {
   const input = document.getElementById('journal-input');
   const text = input.value.trim();
   if (!text) return;
-  state.journal.push({ date: todayStr(), text, time: new Date().toISOString() });
+  const date = todayStr();
+  const entry = { date, text, time: new Date().toISOString() };
+  state.journal.push(entry);
   input.value = '';
   saveState();
+
+  let toastMsg = '收笔。';
+  const syncOn = document.getElementById('zhi-sync-on')?.checked;
+  if (syncOn && zhiState.available) {
+    const ret = await zhiWrite(text, date);
+    if (ret) {
+      entry.zhiId = ret.id;
+      saveState();
+      zhiState.entries.unshift(ret);
+      toastMsg = '收笔 · 已写入织。';
+    } else {
+      toastMsg = '收笔（织写入失败，本地已存）。';
+    }
+  }
   renderJournal();
-  showToast(0, '收笔。');
+  zhiUpdateStatus(zhiState.available);
+  showToast(0, toastMsg);
 }
 
 function deleteJournal(idx) {
@@ -2056,6 +2498,282 @@ setInterval(checkDateChange, 60000);
       tauri.core.invoke('plugin:window|start_dragging').catch(() => {});
     }
   });
+})();
+
+// ============= 织（zhi）桥接 =============
+// zhiState 已在脚本顶部用 var 提升，此处只声明常量
+const ZHI_BASE = 'http://127.0.0.1:3000';
+
+async function tauriFetch(path, options = {}) {
+  const t = window.__TAURI__;
+  if (t?.http?.fetch) return t.http.fetch(ZHI_BASE + path, options);
+  return fetch(ZHI_BASE + path, options);  // browser fallback
+}
+
+async function zhiHealth() {
+  try {
+    const res = await tauriFetch('/api/health');
+    if (!res.ok) return false;
+    const j = await res.json();
+    return j.status === 'ok';
+  } catch (e) { return false; }
+}
+
+async function zhiList() {
+  try {
+    const res = await tauriFetch('/api/entries?limit=200');
+    if (!res.ok) return [];
+    const j = await res.json();
+    return Array.isArray(j) ? j : (j.entries || []);
+  } catch (e) { return []; }
+}
+
+async function zhiWrite(content, date) {
+  try {
+    const res = await tauriFetch('/api/entries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ author: 'carbon', content, date })
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) { return null; }
+}
+
+function zhiUpdateStatus(ok) {
+  const el = document.getElementById('zhi-status');
+  if (!el) return;
+  el.classList.remove('zhi-ok', 'zhi-bad', 'zhi-dim');
+  if (ok) {
+    el.textContent = `织 · 在线（${zhiState.entries.length} 条）`;
+    el.classList.add('zhi-ok');
+    el.title = '';
+  } else {
+    el.textContent = '织 · 未起 ✕';
+    el.classList.add('zhi-bad');
+    el.title = '织未启动 · 请在 ~/repos/zhi 跑 bun run dev 后点 ↻';
+  }
+}
+
+function setZhiStatusDim(text) {
+  const el = document.getElementById('zhi-status');
+  if (!el) return;
+  el.classList.remove('zhi-ok', 'zhi-bad');
+  el.classList.add('zhi-dim');
+  el.textContent = text;
+  el.title = '';
+}
+
+function zhiSetControlsEnabled(on) {
+  const tip = on ? '' : '织未启动 · 请在 ~/repos/zhi 跑 bun run dev 后点 ↻';
+  ['zhi-sync-on', 'zhi-show-on'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = !on;
+    if (!on) el.checked = false;
+    if (el.parentElement) el.parentElement.title = tip;
+  });
+  const mig = document.getElementById('zhi-migrate');
+  if (mig) {
+    mig.disabled = !on;
+    mig.title = on ? '把现有本地日记一次性同步到织' : tip;
+  }
+}
+
+async function zhiInit() {
+  setZhiStatusDim('织 · 检查中…');
+  zhiState.available = await zhiHealth();
+  zhiState.entries = zhiState.available ? await zhiList() : [];
+  zhiUpdateStatus(zhiState.available);
+  zhiSetControlsEnabled(zhiState.available);
+  renderJournal();
+}
+
+async function zhiMigrate() {
+  if (!zhiState.available) { alert('织未连接，无法迁移'); return; }
+  const local = state.journal.filter(e => !e.zhiId);
+  if (!local.length) { alert('本地没有未迁移的日记'); return; }
+  if (!confirm(`确认把 ${local.length} 条本地日记同步到织？\n（已迁移过的不会重复；只迁移未带 zhiId 的本地条目）`)) return;
+  let ok = 0, fail = 0;
+  for (const entry of local) {
+    const ret = await zhiWrite(entry.text, entry.date);
+    if (ret) { entry.zhiId = ret.id; ok++; }
+    else fail++;
+  }
+  saveState();
+  await zhiInit();
+  alert(`迁移完成：成功 ${ok} 条，失败 ${fail} 条`);
+}
+
+function zhiSetNames() {
+  const cur_c = zhiAuthorName('carbon');
+  const cur_s = zhiAuthorName('silicon');
+  const c = prompt(`carbon（你）的名字（与织同 key zhi:name:carbon）：`, cur_c);
+  if (c === null) return;
+  const s = prompt(`silicon（AI）的名字（与织同 key zhi:name:silicon）：`, cur_s);
+  if (s === null) return;
+  try {
+    localStorage.setItem('zhi:name:carbon', c.trim() || '你');
+    localStorage.setItem('zhi:name:silicon', s.trim() || 'AI');
+  } catch {}
+  renderJournal();
+}
+
+function zhiJumpToDate(dateStr) {
+  if (!dateStr) return;
+  const group = document.querySelector(`.day-group[data-date="${dateStr}"]`);
+  if (!group) {
+    showToast(0, `${dateStr} 没有条目`);
+    return;
+  }
+  // 如果折叠了，先展开
+  const body = group.querySelector('.day-body');
+  const arrow = group.querySelector('.day-arrow');
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    arrow.textContent = '▾';
+    group.classList.add('open');
+  }
+  group.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  group.classList.add('day-highlight');
+  setTimeout(() => group.classList.remove('day-highlight'), 1500);
+}
+
+document.getElementById('zhi-refresh')?.addEventListener('click', zhiInit);
+document.getElementById('zhi-migrate')?.addEventListener('click', zhiMigrate);
+document.getElementById('zhi-show-on')?.addEventListener('change', renderJournal);
+document.getElementById('zhi-names')?.addEventListener('click', zhiSetNames);
+document.getElementById('zhi-jump-date')?.addEventListener('change', (e) => zhiJumpToDate(e.target.value));
+
+zhiInit();
+
+// ============= CC 桥接（本地 Claude Code 子进程，固定 session） =============
+(function () {
+  const cc = document.querySelector('.b-cc');
+  const input = document.getElementById('cc-input');
+  const messages = document.getElementById('cc-messages');
+  const sendBtn = document.querySelector('.b-cc .send');
+  const octo = document.getElementById('clawd');
+  const stateEl = document.querySelector('.b-cc .cc-state');
+  const newBtn = document.getElementById('cc-new-session');
+  if (!input || !messages || !cc) return;
+
+  // ── 弹出/收回：focus 展开（floating overlay），blur 收回；点 send 不算 blur
+  input.addEventListener('focus', () => cc.classList.add('expanded'));
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      if (document.activeElement !== input && !cc.contains(document.activeElement)) {
+        cc.classList.remove('expanded');
+      }
+    }, 150);
+  });
+  sendBtn?.addEventListener('mousedown', e => e.preventDefault());  // 防止点 send 时 blur 触发收回
+
+  // ── 自动 context prefix：每条 prompt 前注入 norvera 当前状态（CC 知道但用户不看到）
+  function buildContextPrefix() {
+    const activePanel = document.querySelector('.panel.active')?.id?.replace('panel-', '') || '?';
+    const date = (typeof todayStr === 'function') ? todayStr() : new Date().toISOString().slice(0, 10);
+    const pts = (typeof state !== 'undefined' ? state.points : 0);
+    const streak = (typeof state !== 'undefined' ? state.streak : 0);
+    return `<norvera-context>panel=${activePanel} · date=${date} · 积分=${pts} · 连续=${streak}日</norvera-context>\n\n`;
+  }
+
+  // norvera CC session UUID 持久化（让所有调用接到同一对话）
+  // session_id + started flag：第一次发用 --session-id 创建，之后用 --resume 续
+  const SESSION_KEY = 'norvera_cc_session_id';
+  const STARTED_KEY = 'norvera_cc_session_started';
+  function ensureSessionId() {
+    let id;
+    try { id = localStorage.getItem(SESSION_KEY); } catch {}
+    if (!id || id.length !== 36) {
+      id = (crypto.randomUUID && crypto.randomUUID()) || generateUuid();
+      try {
+        localStorage.setItem(SESSION_KEY, id);
+        localStorage.setItem(STARTED_KEY, 'false');
+      } catch {}
+    }
+    return id;
+  }
+  function isSessionStarted() {
+    try { return localStorage.getItem(STARTED_KEY) === 'true'; } catch { return false; }
+  }
+  function markSessionStarted() {
+    try { localStorage.setItem(STARTED_KEY, 'true'); } catch {}
+  }
+  function generateUuid() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+  function resetSession() {
+    try {
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(STARTED_KEY);
+    } catch {}
+    messages.innerHTML = '';
+    appendMsg('cc', '已开启新对话（旧 session 文件保留在 ~/.claude/projects/-Users-norvera--norvera-cc/）');
+  }
+
+  function appendMsg(who, text, opts = {}) {
+    const time = new Date().toTimeString().slice(0, 5);
+    const displayName = who === 'me'
+      ? (typeof zhiAuthorName === 'function' ? zhiAuthorName('carbon') : 'Carbon')
+      : 'CC';
+    const div = document.createElement('div');
+    div.className = `cc-msg ${who}` + (opts.pending ? ' pending' : '') + (opts.error ? ' error' : '');
+    div.innerHTML =
+      `<div class="who">${escapeHtml(displayName)} · ${time}</div>` +
+      `<div class="text">${escapeHtml(text)}</div>`;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+    return div;
+  }
+
+  const stateMap = { idle: '在听', thinking: '在想…', typing: '在写…', happy: '完成 ✓', error: '出错了' };
+  function setCcState(s) {
+    if (octo) octo.dataset.state = s;
+    if (stateEl) stateEl.innerHTML = `<span class="dot"></span>${stateMap[s] || '在听'}`;
+  }
+
+  async function send() {
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    appendMsg('me', text);
+    setCcState('thinking');
+    const pending = appendMsg('cc', '…', { pending: true });
+    try {
+      const tauri = window.__TAURI__;
+      const invoke = tauri?.core?.invoke;
+      if (!invoke) throw new Error('Tauri invoke 未就绪，请在 dev/build 后运行');
+      const sid = ensureSessionId();
+      const cont = isSessionStarted();
+      const promptWithCtx = buildContextPrefix() + text;
+      const reply = await invoke('cc_chat', { prompt: promptWithCtx, sessionId: sid, continueSession: cont });
+      if (!cont) markSessionStarted();
+      pending.querySelector('.text').textContent = (reply || '').trim() || '（空响应）';
+      pending.classList.remove('pending');
+      setCcState('happy');
+      setTimeout(() => setCcState('idle'), 2200);
+    } catch (e) {
+      pending.querySelector('.text').textContent = 'CC 调用失败：' + String(e);
+      pending.classList.remove('pending');
+      pending.classList.add('error');
+      setCcState('error');
+      setTimeout(() => setCcState('idle'), 2500);
+    }
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      send();
+    }
+  });
+  sendBtn?.addEventListener('click', send);
+  newBtn?.addEventListener('click', resetSession);
+  setCcState('idle');
 })();
 </script>
 </body>
