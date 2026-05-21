@@ -1450,6 +1450,319 @@ body::before {
   letter-spacing: 0.04em;
   font-weight: 300;
 }
+
+/* ═══════════════════════════════════════════
+   Onboarding modal · 碳基硅基初遇 · 仪式感视觉骨架
+   chunk B：纯视觉，未接 state machine / cc chat
+   ═══════════════════════════════════════════ */
+.onboard-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 800ms ease-out;
+}
+.onboard-modal.visible { opacity: 1; }
+.onboard-modal[hidden] { display: none; }
+
+.onboard-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 14, 26, 0.78);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+}
+
+.onboard-stage {
+  position: relative;
+  z-index: 1;
+  width: min(720px, 86vw);
+  max-height: 88vh;
+  padding: 72px 64px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  overflow-y: auto;
+}
+
+.onboard-header { text-align: center; }
+.onboard-title {
+  font-family: 'Cormorant Garamond', '思源宋体', serif;
+  font-size: 38px;
+  letter-spacing: 8px;
+  color: rgba(250, 241, 220, 0.96);
+  font-weight: 300;
+  margin-bottom: 12px;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: onboard-title-rise 1200ms 200ms ease-out forwards;
+}
+.onboard-subtitle {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  letter-spacing: 6px;
+  color: rgba(250, 241, 220, 0.45);
+  font-weight: 300;
+  margin-bottom: 36px;
+  text-transform: uppercase;
+  opacity: 0;
+  animation: onboard-fade-in 1000ms 700ms ease-out forwards;
+}
+@keyframes onboard-title-rise {
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes onboard-fade-in {
+  to { opacity: 1; }
+}
+
+.onboard-step-meter {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  opacity: 0;
+  animation: onboard-fade-in 1000ms 900ms ease-out forwards;
+}
+.onboard-step-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(250, 241, 220, 0.16);
+  transition: all 500ms ease;
+}
+.onboard-step-dot.active {
+  background: rgba(250, 229, 179, 0.95);
+  width: 22px;
+  border-radius: 4px;
+  box-shadow: 0 0 12px rgba(250, 229, 179, 0.3);
+}
+.onboard-step-dot.done {
+  background: rgba(111, 177, 148, 0.7);
+}
+
+.onboard-body {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  opacity: 0;
+  animation: onboard-fade-in 1000ms 1100ms ease-out forwards;
+}
+
+.onboard-cc-bubble {
+  padding: 28px 32px;
+  background: rgba(250, 241, 220, 0.035);
+  border-left: 2px solid rgba(250, 229, 179, 0.4);
+  border-radius: 0 8px 8px 0;
+  min-height: 120px;
+}
+.onboard-cc-author {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 10px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: rgba(250, 229, 179, 0.55);
+  margin-bottom: 14px;
+}
+.onboard-cc-text {
+  font-family: '思源宋体', 'Source Han Serif SC', 'Cormorant Garamond', serif;
+  font-size: 17px;
+  line-height: 1.65;
+  color: rgba(250, 241, 220, 0.94);
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  min-height: 36px;
+  white-space: pre-wrap;
+}
+.typewriter-cursor {
+  display: inline-block;
+  width: 2px;
+  background: rgba(250, 229, 179, 0.9);
+  animation: cursor-blink 900ms steps(1) infinite;
+  margin-left: 2px;
+  vertical-align: -2px;
+  height: 1em;
+}
+@keyframes cursor-blink {
+  50% { opacity: 0; }
+}
+
+.onboard-user-area {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.onboard-user-input {
+  background: rgba(250, 241, 220, 0.05);
+  border: 1px solid rgba(250, 241, 220, 0.15);
+  color: rgba(250, 241, 220, 0.95);
+  padding: 16px 20px;
+  font-family: '思源宋体', 'Source Han Serif SC', serif;
+  font-size: 15px;
+  line-height: 1.75;
+  border-radius: 6px;
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+  transition: border-color 400ms ease, background 400ms ease;
+}
+.onboard-user-input:focus {
+  border-color: rgba(250, 229, 179, 0.5);
+  background: rgba(250, 241, 220, 0.08);
+}
+.onboard-user-input::placeholder {
+  color: rgba(250, 241, 220, 0.3);
+  font-style: italic;
+}
+
+.onboard-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.onboard-skip, .onboard-next, .onboard-close {
+  background: transparent;
+  border: 1px solid rgba(250, 241, 220, 0.22);
+  color: rgba(250, 241, 220, 0.7);
+  padding: 10px 24px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  letter-spacing: 3px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 400ms ease;
+  text-transform: uppercase;
+}
+.onboard-skip:hover, .onboard-close:hover {
+  border-color: rgba(250, 241, 220, 0.5);
+  color: rgba(250, 241, 220, 0.95);
+}
+.onboard-next {
+  background: rgba(250, 229, 179, 0.08);
+  border-color: rgba(250, 229, 179, 0.45);
+  color: rgba(250, 229, 179, 0.95);
+}
+.onboard-next:hover {
+  background: rgba(250, 229, 179, 0.18);
+  border-color: rgba(250, 229, 179, 0.7);
+}
+
+.onboard-footnote {
+  text-align: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 10.5px;
+  letter-spacing: 5px;
+  color: rgba(250, 241, 220, 0.32);
+  text-transform: uppercase;
+  margin-top: 8px;
+  opacity: 0;
+  animation: onboard-fade-in 1000ms 1400ms ease-out forwards;
+}
+
+/* 主界面在 modal 显示时降饱和度淡入 background */
+body:has(.onboard-modal.visible) .window {
+  filter: saturate(0.6) brightness(0.55);
+  transition: filter 800ms ease;
+}
+
+/* 完成动画：主界面自下而上缓亮起 */
+.window.onboard-emerging {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.window.onboard-emerged {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 1400ms ease, transform 1400ms ease, filter 1400ms ease;
+}
+
+/* dev 触发器（chunk B 预览用；chunk C 后改为首次启动自动 / 测试包按钮） */
+.onboard-debug-trigger {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(250, 229, 179, 0.14);
+  border: 1px solid rgba(250, 229, 179, 0.32);
+  color: rgba(250, 229, 179, 0.9);
+  font-size: 16px;
+  cursor: pointer;
+  z-index: 99;
+  opacity: 0.5;
+  transition: opacity 200ms;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.onboard-debug-trigger:hover { opacity: 1; }
+
+/* CC 思考中的呼吸三点（替代 '…' 字符） */
+.cc-thinking {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  height: 28px;
+}
+.cc-thinking .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(250, 229, 179, 0.7);
+  animation: cc-breathe 1400ms ease-in-out infinite;
+}
+.cc-thinking .dot:nth-child(2) { animation-delay: 200ms; }
+.cc-thinking .dot:nth-child(3) { animation-delay: 400ms; }
+@keyframes cc-breathe {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* typewriter 期间 bubble 可点跳过：hover 提示 */
+.onboard-cc-bubble { cursor: pointer; }
+.onboard-cc-bubble[data-typing="false"] { cursor: default; }
+
+/* 开场预告（modal 一开就显示，CC loading 期的诗意填充） */
+.onboard-greeting {
+  font-family: '思源宋体', 'Source Han Serif SC', 'Cormorant Garamond', serif;
+  font-weight: 300;
+  color: rgba(250, 241, 220, 0.92);
+  line-height: 1.65;
+  letter-spacing: 0.02em;
+  font-size: 17px;
+}
+.onboard-greeting-line {
+  opacity: 0;
+  animation: greeting-rise 1000ms ease-out forwards;
+  margin-bottom: 4px;
+}
+.onboard-greeting-line:nth-child(1) { animation-delay: 100ms; }
+.onboard-greeting-line:nth-child(2) { animation-delay: 700ms; }
+.onboard-greeting-line:nth-child(3) { animation-delay: 1400ms; }
+.onboard-greeting-line:nth-child(4) { animation-delay: 2100ms; }
+@keyframes greeting-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.onboard-greeting-thinking {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 26px;
+  opacity: 0;
+  animation: greeting-rise 1200ms 3000ms ease-out forwards;
+}
+.onboard-greeting-label {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  color: rgba(250, 229, 179, 0.55);
+}
 </style>
 </head>
 <body>
@@ -1790,6 +2103,50 @@ body::before {
   <path d="M47 58 Q50 60 53 58" stroke="#2a1810" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.7"/>
 </svg>
 </template>
+
+<!-- ═══════════════════════════════════════════
+     Onboarding modal · 碳基硅基初遇
+     chunk B：视觉骨架（仪式感 / typewriter / step meter）
+     放在 <script> 之前，以便 IIFE 跑时 DOM 已就绪
+     ═══════════════════════════════════════════ -->
+<div class="onboard-modal" id="onboard-modal" hidden>
+  <div class="onboard-overlay"></div>
+  <div class="onboard-stage">
+    <div class="onboard-header">
+      <div class="onboard-title">碳基与硅基的初遇</div>
+      <div class="onboard-subtitle">Carbon · Silicon · Co-creation</div>
+      <div class="onboard-step-meter">
+        <span class="onboard-step-dot active"></span>
+        <span class="onboard-step-dot"></span>
+        <span class="onboard-step-dot"></span>
+        <span class="onboard-step-dot"></span>
+        <span class="onboard-step-dot"></span>
+        <span class="onboard-step-dot"></span>
+        <span class="onboard-step-dot"></span>
+        <span class="onboard-step-dot"></span>
+      </div>
+    </div>
+    <div class="onboard-body">
+      <div class="onboard-cc-bubble">
+        <div class="onboard-cc-author">silicon</div>
+        <div class="onboard-cc-text" id="onboard-cc-text"></div>
+      </div>
+      <div class="onboard-user-area">
+        <textarea class="onboard-user-input" id="onboard-user-input" placeholder="说点什么…" rows="3"></textarea>
+        <div class="onboard-controls">
+          <button class="onboard-skip" id="onboard-skip">跳过</button>
+          <button class="onboard-next" id="onboard-next">继续 →</button>
+        </div>
+      </div>
+    </div>
+    <div class="onboard-footnote">
+      Step <span id="onboard-step-current">1</span> · 8 — 你和你的 CC 一起为这个 app 填心
+    </div>
+  </div>
+</div>
+
+<!-- dev 触发器（chunk B 预览用；chunk C 改成首次启动自动 / 测试包专属按钮） -->
+<button class="onboard-debug-trigger" id="onboard-debug-trigger" title="预览 onboarding modal · dev only">⊕</button>
 
 <script>
 // ============= 配置 =============
@@ -2775,7 +3132,496 @@ zhiInit();
   newBtn?.addEventListener('click', resetSession);
   setCcState('idle');
 })();
+
+// ═══════════════════════════════════════════
+// Onboarding modal · chunk C · state machine + cc 集成
+// 真实 cc_chat 驱动；P1-P8 行为原则注入 onboarding-context prefix
+// 独立 cc session (subdir="onboarding") + 独立 storage keys
+// ═══════════════════════════════════════════
+(function () {
+  const modal = document.getElementById('onboard-modal');
+  if (!modal) return;
+  const ccText = document.getElementById('onboard-cc-text');
+  const ccAuthor = modal.querySelector('.onboard-cc-author');
+  const stepCurrent = document.getElementById('onboard-step-current');
+  const dots = modal.querySelectorAll('.onboard-step-dot');
+  const userInput = document.getElementById('onboard-user-input');
+  const nextBtn = document.getElementById('onboard-next');
+  const skipBtn = document.getElementById('onboard-skip');
+  const closeBtn = document.getElementById('onboard-close');
+  const trigger = document.getElementById('onboard-debug-trigger');
+
+  // 独立 storage（测试期不污染主 state，最终会 merge 进 zhenyuan_quest_v1）
+  const DRAFT_KEY = 'norvera_onboard_draft';
+  const LIFE_TRACE_KEY = 'norvera_onboard_lifetrace';
+  const ONBOARDED_KEY = 'norvera_onboarded_v1';
+  const SESSION_ID_KEY = 'norvera_onboard_session_id';
+  const SESSION_STARTED_KEY = 'norvera_onboard_session_started';
+
+  const STEP_SPECS = [
+    {
+      key: 'task_groups',
+      panel: '今日 · 高频日常',
+      hint: '从用户昨天/最近的具体日常切入（P2）。CC 主动 propose 分组+任务+分值（P4）。必扫健康底线（缺早餐/熬夜/久坐/无身属性任务时温柔嗅）。散落候选："什么让你早晨愿意起来动？"',
+      shape: '{"task_groups":[{"id":"rhythm","name":"日常节奏 · Rhythm","tasks":[{"id":"morning_qigong","name":"早操","points":10,"attrs":["body","clarity"]}]}]}'
+    },
+    {
+      key: 'attributes',
+      panel: '属性 · 修证维度',
+      hint: '从已收 task_groups 反推维度。CC 先 propose 3-5 维（身/清明/智识/凝视/轻盈），用户改即可。散落："如果只能保留 3 个维度看自己，你最不舍得删的是哪几个？"',
+      shape: '{"attributes":[{"id":"body","name":"身","en":"Body"}]}'
+    },
+    {
+      key: 'records',
+      panel: '记录 · 高频小记',
+      hint: '从用户的小习惯切入（睡眠/饮食/月相/心情）。CC 主动 propose 2-4 件 toggle 形态。柔。',
+      shape: '{"records":[{"id":"dinner","name":"今日晚餐","options":[{"val":"no","label":"不食"},{"val":"yes","label":"食"}]}]}'
+    },
+    {
+      key: 'journal',
+      panel: '日记',
+      hint: 'CC 直接给默认 placeholder（基于气质猜）+ 说明织联动是什么。用户改或保留。',
+      shape: '{"journal":{"placeholder":"两三句话即可。今日做了什么、想了什么、感受到了什么。","zhi_sync_default":true,"categories":[]}}'
+    },
+    {
+      key: 'ledger',
+      panel: '记账',
+      hint: '从用户消费习惯切入（最近一次花钱开心是什么、平常什么花得最多）。CC propose 分类+货币（show_categories: true）。',
+      shape: '{"ledger":{"categories":["生活","工具","餐饮","书","其他"],"show_categories":true,"currency_symbol":"¥"}}'
+    },
+    {
+      key: 'shop_items',
+      panel: '商店 · 奖励',
+      hint: '【P5 不剧透】绝不要说"我帮你拟意蕴名字"。从用户"最近最快乐的事/最想被允许做的"切入。CC 默默基于 user 气质重塑 name+desc，直接呈现成品。raw_desire 字段保留用户原始诉求。',
+      shape: '{"shop_items":[{"id":"rest_day","name":"一天什么都不干的休息日","desc":"哪怕实际生活和平常一样，光是这个名头就够了","raw_desire":"想要一个完全不被任何应该催促的一天","cost":200}]}'
+    },
+    {
+      key: 'long_projects',
+      panel: '长程项目',
+      hint: 'P3 用 memory prime（如果用户长程项目已在 memory 中提及，CC 主动引用）。柔一点。',
+      shape: '{"long_projects":[{"id":"business_plan","name":"商业策划","phase":"Phase 二","tone":"慢深 / 真名 / 不堆量","milestones":["地图","故事"],"doc_path":"~/Cowork/商业策划/00-地图.md"}]}'
+    },
+    {
+      key: 'user_quality_profile',
+      panel: '集中对话 · 用户气质',
+      hint: '完全开放。主题：你想做什么/想成为什么/现在被什么困扰。CC 用引导方式拆"目标→落地"但更柔。必扫健康底线（睡眠/饮食/动）。',
+      shape: '{"user_quality_profile":{"language_register":"...","core_values":["..."],"current_struggles":["..."],"current_aspirations":["..."],"health_baseline":{"sleep_pattern":"...","eating_pattern":"...","movement_pattern":"..."},"preferred_imagery":["..."],"raw_conversation_excerpt":"..."}}'
+    }
+  ];
+
+  let stepIdx = 0;
+  let draft = loadDraft();
+  let lifeTrace = loadLifeTrace();
+  let busy = false;
+  let currentTypewriter = null;
+
+  function loadDraft() {
+    try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}'); }
+    catch { return {}; }
+  }
+  function saveDraft() {
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch {}
+  }
+  function loadLifeTrace() {
+    try { return JSON.parse(localStorage.getItem(LIFE_TRACE_KEY) || '[]'); }
+    catch { return []; }
+  }
+  function saveLifeTrace() {
+    try { localStorage.setItem(LIFE_TRACE_KEY, JSON.stringify(lifeTrace)); } catch {}
+  }
+
+  function ensureOnboardSessionId() {
+    let sid = localStorage.getItem(SESSION_ID_KEY);
+    if (!sid) {
+      sid = (crypto.randomUUID && crypto.randomUUID()) || genUUID();
+      localStorage.setItem(SESSION_ID_KEY, sid);
+      localStorage.removeItem(SESSION_STARTED_KEY);
+    }
+    return sid;
+  }
+  function genUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0, v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+  function isOnboardSessionStarted() {
+    return localStorage.getItem(SESSION_STARTED_KEY) === '1';
+  }
+  function markOnboardSessionStarted() {
+    localStorage.setItem(SESSION_STARTED_KEY, '1');
+  }
+  function resetOnboardSession() {
+    localStorage.removeItem(SESSION_ID_KEY);
+    localStorage.removeItem(SESSION_STARTED_KEY);
+  }
+
+  function buildPrefix(stepN) {
+    const spec = STEP_SPECS[stepN];
+    if (!spec) return '';
+    const isFirst = stepN === 0;
+    return `<onboarding-context>
+你是用户的个人 CC（已带 ~/.claude/ 全部配置：CLAUDE.md / memory / Skills）。
+你和用户一起为 norvera 这个 macOS app「初见 + 共创」。
+这不是你和用户的初见，是 app 与用户的初见。
+
+【norvera 是什么 · intro 必含（P7）】
+norvera 是用户把日常修证 / 长程项目 / 短程打勾记分 / 与你的对话留念，整在一处的小操作台。
+intro 用一两句轻柔讲清楚（不机械、不像 readme，符合 P8 柔/诗意/优雅）。
+
+【硅基行为八原则 · 严格遵守】
+
+P1 不裸抛问题——每步先说一段（这步是干嘛 + 一两个具体例子 prime），再问软问题。
+P2 从习惯切入——反观类问题从"昨天早上做了什么"具体习惯入手，不抛抽象"维度/分类"。
+P3 用 user memory prime——你的 ~/.claude/ 内 CLAUDE.md / memory 已加载。如果用户画像/节奏/长程已写在 memory → 优先用已知信息切入。"你之前提过 ___"比"你想 ___"更有温度。
+P4 引导性 > 自由度——给具体例子让用户挑/改，不让用户裸答。
+P5 不剧透（重要）——你在背后做的事不要点出来。Step 6 商店：绝不要说"我帮你拟意蕴不同的名字"，直接给最终成品。让用户看到的是惊喜感。
+P6 柔——避免列举式问法（"A/B/C 你想哪个"）。用具体语境切入。
+P7 第一句话讲这 app 是什么——intro 必含。
+P8 柔/诗意/优雅是 baseline——每句话出口前过这三档。
+
+【健康底线】
+睡眠 / 饮食 / 身体活动如果在用户回答中没自然出现，主动温柔但坚定地嗅一嗅。不强加，但不放过。
+
+【输出格式】
+1. 先用一句开场（P1 / P8 / 必要时 P3 引用 memory）
+2. 引导对话直到收够（CC 主动 propose，不让用户裸答）
+3. 用户确认信息后，输出 \`\`\`json\`\`\` block（符合本步 schema 形状）；若有散落问答另起 \`\`\`life-trace\`\`\` block
+
+【效率提示 · 节制】
+本步信息够清楚就直接出 \`\`\`json\`\`\` block，不必反复 follow-up 问"还有什么补充"。
+用户已经说出关键内容时——propose schema + 出 json，而不是再问一轮。
+本 onboarding 长度本来就慢（约 10-15 分钟），不要让 follow-up 把它再拉长。
+
+【当前会话状态】
+当前步：${stepN + 1} / 8 · ${spec.panel}
+本步引导提示：${spec.hint}
+目标 schema 形状：${spec.shape}
+本步用户已有的输入草稿：${JSON.stringify(draft[spec.key] || null)}
+
+${isFirst ? '请先用 P7 + P8 调子做一段开场——讲清三件事：(a) norvera 是什么；(b) 共创不是初见，你和用户已熟；(c) 这次见面我们慢慢聊，约 10-15 分钟，用户可以中途关掉 modal，draft 都保留，下次接着跑。然后进入 step 1 · 今日 · 高频日常。' : '请进入 step ' + (stepN + 1) + ' · ' + spec.panel + '。'}
+</onboarding-context>`;
+  }
+
+  function buildResumePrompt(userText) {
+    const spec = STEP_SPECS[stepIdx];
+    return `用户回答：
+
+${userText}
+
+（如果你认为本步已收到足够信息，请输出 \`\`\`json\`\`\` block 符合 ${spec.key} 的 schema 形状；若有散落问答，另起 \`\`\`life-trace\`\`\` block。否则继续引导。当前 step ${stepIdx + 1} / 8 · ${spec.panel}。保持 P1-P8。）`;
+  }
+
+  function parseFences(text) {
+    const out = { json: null, lifeTrace: null, raw: text, display: text };
+    const jsonMatch = text.match(/```json\s*\n([\s\S]*?)\n```/);
+    if (jsonMatch) {
+      try { out.json = JSON.parse(jsonMatch[1].trim()); }
+      catch (e) { console.warn('json fence parse failed:', e.message); }
+    }
+    const ltMatch = text.match(/```life-trace\s*\n([\s\S]*?)\n```/);
+    if (ltMatch) {
+      try { out.lifeTrace = JSON.parse(ltMatch[1].trim()); }
+      catch (e) { console.warn('life-trace fence parse failed:', e.message); }
+    }
+    // display：去除 fence 本体 + 提示已收 + collapse 多换行
+    out.display = text
+      .replace(/```json\s*\n[\s\S]*?\n```/g, jsonMatch ? '\n（已收到本步结构化输入 ✓）\n' : '\n')
+      .replace(/```life-trace\s*\n[\s\S]*?\n```/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    return out;
+  }
+
+  function typewriter(el, text, ms) {
+    // cancel 任何正在运行的 typewriter
+    if (currentTypewriter) currentTypewriter.cancel();
+    ms = ms || 28;
+    el.innerHTML = '';
+    el.setAttribute('data-typing', 'true');
+    const cursor = document.createElement('span');
+    cursor.className = 'typewriter-cursor';
+    cursor.innerHTML = '&nbsp;';
+    el.appendChild(cursor);
+
+    let i = 0;
+    let timer = null;
+    let cancelled = false;
+
+    function done() {
+      el.setAttribute('data-typing', 'false');
+      setTimeout(() => { if (cursor.parentNode) cursor.remove(); }, 1200);
+    }
+    function tick() {
+      if (cancelled) return;
+      if (i >= text.length) { done(); return; }
+      const ch = text[i];
+      const node = ch === '\n' ? document.createElement('br') : document.createTextNode(ch);
+      cursor.parentNode.insertBefore(node, cursor);
+      i++;
+      timer = setTimeout(tick, ms);
+    }
+    currentTypewriter = {
+      cancel: () => { cancelled = true; if (timer) clearTimeout(timer); el.setAttribute('data-typing', 'false'); },
+      skipToEnd: () => {
+        cancelled = true;
+        if (timer) clearTimeout(timer);
+        // 一次性把剩余字符塞进去
+        while (i < text.length) {
+          const ch = text[i];
+          const node = ch === '\n' ? document.createElement('br') : document.createTextNode(ch);
+          cursor.parentNode.insertBefore(node, cursor);
+          i++;
+        }
+        done();
+      }
+    };
+    tick();
+    return currentTypewriter;
+  }
+
+  // 思考中三点呼吸（替代 '…' 字符）
+  function showThinking(el) {
+    if (currentTypewriter) currentTypewriter.cancel();
+    el.setAttribute('data-typing', 'false');
+    el.innerHTML = '<span class="cc-thinking"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>';
+  }
+
+  // 开场预告：modal 一开就显示，覆盖 CC loading 4-8s 空白期
+  function showOpening(el) {
+    if (currentTypewriter) currentTypewriter.cancel();
+    el.setAttribute('data-typing', 'false');
+    el.innerHTML = '<div class="onboard-greeting">' +
+      '<div class="onboard-greeting-line">我们见过——但 norvera 是第一次见你。</div>' +
+      '<div class="onboard-greeting-line">这次我们慢慢来，大约十到十五分钟。</div>' +
+      '<div class="onboard-greeting-line">有八格要填，每一格我都陪你走。</div>' +
+      '<div class="onboard-greeting-line">想歇一下、关掉这扇门也行——下次回来，我从你停下的地方接上。</div>' +
+      '<div class="onboard-greeting-thinking">' +
+        '<span class="cc-thinking"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>' +
+        '<span class="onboard-greeting-label">让我先想想⋯</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function setBusy(on) {
+    busy = on;
+    if (nextBtn) {
+      nextBtn.disabled = on;
+      nextBtn.textContent = on ? 'CC 思考中…' : '继续 →';
+    }
+    if (userInput) userInput.disabled = on;
+    if (skipBtn) skipBtn.disabled = on;
+  }
+
+  async function callCC(prompt) {
+    const tauri = window.__TAURI__;
+    const invoke = tauri?.core?.invoke || tauri?.invoke;
+    if (!invoke) {
+      throw new Error('Tauri invoke 未就绪 · 请在 dev/build 后运行');
+    }
+    const sid = ensureOnboardSessionId();
+    const cont = isOnboardSessionStarted();
+    try {
+      const reply = await invoke('cc_chat', {
+        prompt: prompt,
+        sessionId: sid,
+        continueSession: cont,
+        subdir: 'onboarding'
+      });
+      if (!cont) markOnboardSessionStarted();
+      return reply;
+    } catch (e) {
+      throw new Error(String(e));
+    }
+  }
+
+  function paintStep(i) {
+    dots.forEach((d, idx) => {
+      d.classList.remove('active', 'done');
+      if (idx < i) d.classList.add('done');
+      else if (idx === i) d.classList.add('active');
+    });
+    if (stepCurrent) stepCurrent.textContent = String(i + 1);
+    if (userInput) userInput.value = '';
+  }
+
+  function findResumeStep() {
+    for (let i = 0; i < STEP_SPECS.length; i++) {
+      if (!(STEP_SPECS[i].key in draft)) return i;
+    }
+    return STEP_SPECS.length - 1;
+  }
+  function isOnboardComplete() {
+    return STEP_SPECS.every(s => s.key in draft);
+  }
+  function resetOnboardingState() {
+    draft = {};
+    lifeTrace = [];
+    saveDraft();
+    saveLifeTrace();
+    resetOnboardSession();
+    stepIdx = 0;
+  }
+
+  function openModal() {
+    modal.hidden = false;
+    const hasDraft = Object.keys(draft).length > 0;
+    const hasSession = !!localStorage.getItem(SESSION_ID_KEY);
+    const complete = isOnboardComplete();
+
+    // Tauri v2 默认 disable native confirm/alert → 用 modal 内 UI 替代
+    // 默认行为：有进度则接着跑；走完 8 步则自动重开；都没有则从 step 0 开始
+    if (complete) {
+      console.log('[onboarding] previous run complete; resetting to retry. draft snapshot:', draft, 'life-trace:', lifeTrace);
+      resetOnboardingState();
+    } else if (hasDraft && hasSession) {
+      stepIdx = findResumeStep();
+      console.log('[onboarding] resuming at step', stepIdx + 1, '/ 8 (already collected', Object.keys(draft).length, 'steps)');
+    } else {
+      stepIdx = 0;
+    }
+
+    requestAnimationFrame(() => {
+      modal.classList.add('visible');
+      setTimeout(() => {
+        paintStep(stepIdx);
+        // step 0 第一次：先显示开场预告（覆盖 CC loading 空白期），CC reply 来 typewriter 替换
+        // resume：直接 showThinking 三点呼吸即可
+        if (stepIdx === 0) {
+          showOpening(ccText);
+          startStep(stepIdx, true);
+        } else {
+          startStep(stepIdx);
+        }
+      }, 700);
+    });
+  }
+
+  function closeModal() {
+    modal.classList.remove('visible');
+    const win = document.querySelector('.window');
+    if (win) {
+      win.classList.add('onboard-emerging');
+      requestAnimationFrame(() => {
+        win.classList.add('onboard-emerged');
+      });
+      setTimeout(() => {
+        win.classList.remove('onboard-emerging', 'onboard-emerged');
+      }, 1500);
+    }
+    setTimeout(() => { modal.hidden = true; }, 800);
+  }
+
+  async function startStep(i, skipThinking) {
+    paintStep(i);
+    setBusy(true);
+    if (ccAuthor) ccAuthor.textContent = `silicon · step ${i + 1}/8`;
+    if (!skipThinking) showThinking(ccText);
+    try {
+      const reply = await callCC(buildPrefix(i));
+      handleReply(reply);
+    } catch (e) {
+      typewriter(ccText, 'CC 调用失败：' + e.message + '\n\n可能原因：~/.claude/ 未配置 / claude CLI 不在 PATH / onboarding session 异常。\n按 ESC 关闭后重试。');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleUserSubmit() {
+    if (busy) return;
+    const text = (userInput?.value || '').trim();
+    if (!text) {
+      nextStep();
+      return;
+    }
+    setBusy(true);
+    showThinking(ccText);
+    try {
+      const reply = await callCC(buildResumePrompt(text));
+      handleReply(reply);
+    } catch (e) {
+      typewriter(ccText, 'CC 调用失败：' + e.message);
+    } finally {
+      setBusy(false);
+      if (userInput) userInput.value = '';
+    }
+  }
+
+  function handleReply(reply) {
+    const parsed = parseFences(reply);
+    if (parsed.json) {
+      const spec = STEP_SPECS[stepIdx];
+      const inner = parsed.json[spec.key] !== undefined ? parsed.json[spec.key] : parsed.json;
+      draft[spec.key] = inner;
+      saveDraft();
+      const dot = dots[stepIdx];
+      if (dot) {
+        dot.classList.remove('active');
+        dot.classList.add('done');
+      }
+    }
+    if (parsed.lifeTrace) {
+      if (Array.isArray(parsed.lifeTrace)) lifeTrace.push(...parsed.lifeTrace);
+      else lifeTrace.push(parsed.lifeTrace);
+      saveLifeTrace();
+    }
+    typewriter(ccText, parsed.display || parsed.raw);
+  }
+
+  function nextStep() {
+    if (stepIdx >= STEP_SPECS.length - 1) {
+      finalize();
+      return;
+    }
+    stepIdx++;
+    startStep(stepIdx);
+  }
+
+  function finalize() {
+    typewriter(ccText, '我们走完了。\n\n你的 draft 已收在本地。主界面准备好——慢慢来。');
+    setTimeout(() => closeModal(), 4800);
+    // chunk C MVP：暂不自动 merge draft 到 zhenyuan_quest_v1
+    // 待跑通后再加 "应用到主 app" 按钮 / 自动合并逻辑
+  }
+
+  trigger?.addEventListener('click', openModal);
+  nextBtn?.addEventListener('click', () => {
+    if ((userInput?.value || '').trim()) handleUserSubmit();
+    else nextStep();
+  });
+  skipBtn?.addEventListener('click', () => {
+    if (busy) return;
+    nextStep();
+  });
+  closeBtn?.addEventListener('click', closeModal);
+  userInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleUserSubmit();
+    }
+  });
+
+  // 点击 CC bubble 跳过 typewriter
+  const ccBubble = modal.querySelector('.onboard-cc-bubble');
+  ccBubble?.addEventListener('click', () => {
+    if (currentTypewriter && ccText.getAttribute('data-typing') === 'true') {
+      currentTypewriter.skipToEnd();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (modal.hidden) return;
+    // 空格跳过 typewriter（除非焦点在 textarea 内）
+    if (e.key === ' ' && e.target !== userInput && currentTypewriter && ccText.getAttribute('data-typing') === 'true') {
+      e.preventDefault();
+      currentTypewriter.skipToEnd();
+      return;
+    }
+    if (e.key === 'Escape' && !busy) closeModal();
+  });
+})();
 </script>
+
 </body>
 </html>
 
