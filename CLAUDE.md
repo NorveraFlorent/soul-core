@@ -1,11 +1,11 @@
 # 心舍 · Soul·Core · AI 工作手册
 
 > AI 在心舍项目目录里工作时的速查 — 项目说明 / 装跑 / 数据存储 看 [README.md](README.md)；后续推进 brief 看 `~/Desktop/心舍-后续工作.md`。
-> 旧 codename：norvera（已被 rename 到 soul-core，仅 macOS user home 路径段 `Users/norvera` 是用户账户名保留）。
+> 旧 codename：norvera（已被 rename 到 soul-core）。代码中如还出现 `Users/norvera` 这种路径段，那是 macOS 用户账户名，不属于品牌字串。
 
 ## 项目本质
 
-macOS 桌面 app（Tauri v2）—— 贞元的日常修证 + 长程项目 + 短程打勾记分 + 与 AI 伴侣（CC）共创操作台。后续要脱敏出 public 模板让其他有 Claude Code 的朋友能用。
+macOS 桌面 app（Tauri v2）—— 作者（owner）日常修证 + 长程项目 + 短程打勾记分 + 与 AI 伴侣（CC）共创操作台。后续要脱敏出 public 模板让其他有 Claude Code 的朋友能用。
 
 中文名「心舍」（心的小屋），英文 codename「Soul·Core」（魂的核心），技术层 slug `soul-core`（ASCII）。
 
@@ -15,7 +15,7 @@ macOS 桌面 app（Tauri v2）—— 贞元的日常修证 + 长程项目 + 短�
 - **织 server 一行不动**：心舍通过 HTTP 桥接（`http://127.0.0.1:3000/api/*`）镜像 + 双写，不修改 `~/repos/zhi/`。
 - **跨 origin localStorage 限制**：Tauri webview 是 `tauri://localhost`，织前端是 `http://localhost:5173`，**localStorage 不共享**。作者名等 key 让用户在心舍这边再 setup 一次（用同名 key `zhi:name:*` 保持调子）。
 - **clawd-on-desk 是 AGPL-3.0**：不要把它的 sprite / 代码复制进来（会让心舍整个染 AGPL）。要做章鱼动画自画或用许可干净的素材。
-- **localStorage 旧 key 迁移**：旧 `norvera_*` 系列在 `index.html migrateLegacyKeys` 一次性迁移到 `soulcore_*`。`zhenyuan_quest_v1`（贞元个人主 state）不动。
+- **localStorage 旧 key 迁移**：旧 `norvera_*` 系列在 `index.html migrateLegacyKeys` 一次性迁移到 `soulcore_*`。`zhenyuan_quest_v1`（owner 主 state，沿用旧 codename 命名）不动。
 - **Tauri v2 默认 disable native dialogs**：`alert/confirm/prompt` 无声 block UI，要么自定义 modal UI，要么 capabilities 加 dialog permission。
 
 ## CC 桥接关键
@@ -24,7 +24,7 @@ macOS 桌面 app（Tauri v2）—— 贞元的日常修证 + 长程项目 + 短�
 - session 持续：固定 cwd `~/.soul-core/cc/`（onboarding 用 `~/.soul-core/cc-onboarding/` 独立）
 - 第一次发用 `--session-id <uuid>` 创建；后续用 `--resume <uuid>` 续
 - 后端有 fallback：create 失败（`already in use`）自动切 resume；resume 失败（`not found`）自动切 create
-- session 文件落 `~/.claude/projects/-Users-norvera--soul-core-cc/<uuid>.jsonl`
+- session 文件落 `~/.claude/projects/-Users-<USER>--soul-core-cc/<uuid>.jsonl`（`<USER>` 为本机 macOS 账户名）
 - 自动 prefix `<soul-core-context>panel=… · date=… · 积分=…</soul-core-context>` 给 CC 看见当前状态（用户消息流隐藏）
 - cc_chat 接受 `subdir` 参数（白名单 main/onboarding）切换 cwd
 
@@ -39,7 +39,7 @@ macOS 桌面 app（Tauri v2）—— 贞元的日常修证 + 长程项目 + 短�
 ## 调子提醒
 
 - UI 大改 give Claude Design（视觉），调子定下后 CC 接工程层。CD 额度贵省着用
-- 不要堆砌：列选项让贞元选；工程细节 CC 直接做
+- 不要堆砌：列选项让用户选；工程细节 CC 直接做
 - 不要假装"做完了"：未验证的不算 done
 - 长 session 末尾建议 break + 开新会话推新 vision，比硬塞效率高
 

@@ -54,21 +54,21 @@ bun run tauri build -c src-tauri/tauri.test.conf.json
 
 ## 数据
 
-所有状态（任务进度 / 积分 / 日记 / 记账 / 商店）存浏览器 `localStorage`，键 `zhenyuan_quest_v1`（贞元个人 key）。Onboarding 用独立 keys `soulcore_onboard_*`。可在大端底部 **导出存档** 备份 JSON。
+所有状态（任务进度 / 积分 / 日记 / 记账 / 商店）存浏览器 `localStorage`，键 `zhenyuan_quest_v1`（沿用作者旧 codename 的主 state key，未来可能改）。Onboarding 用独立 keys `soulcore_onboard_*`。可在大端底部 **导出存档** 备份 JSON。
 
-旧 `norvera_*` 系列 keys 在首次启动时自动迁移到 `soulcore_*`（参见 `index.html migrateLegacyKeys`）。
+旧 `norvera_*` 系列 keys（旧 codename 时期）在首次启动时自动迁移到 `soulcore_*`（参见 `index.html migrateLegacyKeys`）。
 
 ## CC 桥接关键
 
 - `cc_chat` Tauri command 用 `bash -lc "claude -p"`（让 user shell PATH 生效找到 homebrew claude）
 - session 持续：固定 cwd `~/.soul-core/cc/`（onboarding 用 `~/.soul-core/cc-onboarding/` 独立）
 - 第一次发用 `--session-id <uuid>` 创建，后续 `--resume <uuid>` 续，有 fallback
-- session 文件落 `~/.claude/projects/-Users-norvera--soul-core-cc/<uuid>.jsonl`
+- session 文件落 `~/.claude/projects/-Users-<USER>--soul-core-cc/<uuid>.jsonl`（`<USER>` 为本机 macOS 账户名）
 - 自动 prefix `<soul-core-context>panel=… · date=… · 积分=…</soul-core-context>` 给 CC 看见当前状态
 
-## 织（Zhi）联动
+## 织（Zhi）联动（可选）
 
-日记 panel 通过 HTTP 桥接共写到[织](https://github.com/zhenyuan/zhi)（共写日记 app，跑在 `127.0.0.1:3000`）。**织一行代码不动**，心舍只是织的另一个视图入口。
+日记 panel 通过 HTTP 桥接共写到[织](https://github.com/zhenyuan/zhi)（共写日记 app，跑在 `127.0.0.1:3000`）。**织一行代码不动**，心舍只是织的另一个视图入口。需要这块功能时，需要单独 clone 织并启动其 dev server（见下方"织 server 需要在跑"）；不启动也能用心舍其它功能，日记 panel 会 graceful fallback 到本地写入。
 
 - **双写**：写日记时本地 + 织都存一份，本地记录 `zhiId` 防止重复迁移
 - **合并展示**：渲染时把本地日记 + 织里所有条目（含 silicon 的批注）按日期分组展示
@@ -93,6 +93,6 @@ cd ~/repos/zhi && bun run dev
 ## 设计 / 工程分工
 
 - UI 视觉：[Claude Design](https://claude.ai)（三栏 / 八房撞色 / 五调色板 / 章鱼麻薯吉祥物）
-- 工程包装：贞元 × Claude Code（Tauri 配置 / 毛玻璃融入 / 拖动 / GitHub / 织桥接 / CC 桥接 / 心舍 onboarding）
-- 状态机 JS：贞元 × Claude Code
+- 工程包装：Project author × Claude Code（Tauri 配置 / 毛玻璃融入 / 拖动 / GitHub / 织桥接 / CC 桥接 / 心舍 onboarding）
+- 状态机 JS：Project author × Claude Code
 - 现有 license：私有项目 / 私有 repo
