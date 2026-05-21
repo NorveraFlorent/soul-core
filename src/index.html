@@ -1,0 +1,2080 @@
+<!DOCTYPE html>
+<!--
+  norvera · 贞元养成 · 大端 (macOS 960×720 hudWindow)
+  ───────────────────────────────────────────────────────────────
+  设计层：贞元 × Claude · 三栏布局 · 撞色八房 · 章鱼吉祥物 · 道家味
+  工程层：所有现有 JS state machine / localStorage / data-* / id 钩子原位保留
+
+  data-palette  (on <html>): xuan-jin · qing-ci · zhu-xuan · yue-bai · chun-xin
+  data-mascot   (on <html>): octopus | mochi
+  撞色八房通过 body:has(#panel-X.active) 自动切换，零 JS 改动
+-->
+<html lang="zh-CN" data-palette="xuan-jin" data-mascot="octopus">
+<head>
+<meta charset="UTF-8">
+<title>贞元养成 · Norvera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Noto+Serif+SC:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+/* ───────────────────────── 基础调色板（玄金 · default） ───────────────────────── */
+:root {
+  --bg-deep: #0a0e1a;
+  --bg-mid: #131829;
+  --bg-soft: #1a2038;
+  --ink: #e8e4d8;
+  --ink-soft: #b8b4a8;
+  --ink-faint: #6b6858;
+  --accent: #c9a961;
+  --accent-soft: #8a7a4a;
+  --jade: #5a8a7a;
+  --plum: #6a4a6a;
+  --celadon: #7a9a8a;
+  --crimson: #a85a5a;
+  --line: color-mix(in srgb, var(--ink) 8%, transparent);
+  --line-soft: color-mix(in srgb, var(--ink) 4%, transparent);
+
+  --serif-en: 'Cormorant Garamond', 'Noto Serif SC', serif;
+  --serif:    'Noto Serif SC', 'Cormorant Garamond', serif;
+  --mono:     'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ───────────────────────── 备选配色（节气切换） ─────────────────────────
+   切换方式：document.documentElement.dataset.palette = 'yue-bai' */
+html[data-palette="yue-bai"] {
+  --bg-deep: #ebe6d6; --bg-mid: #f1ede0; --bg-soft: #f7f3e7;
+  --ink: #2a2618; --ink-soft: #6a5e48; --ink-faint: #a89e80;
+  --accent: #8a6a30; --accent-soft: #a88a50;
+  --jade: #3a7a68; --plum: #6a4a6a; --celadon: #5a8a6a; --crimson: #a04438;
+}
+html[data-palette="chun-xin"] {
+  --bg-deep: #f0e4d8; --bg-mid: #f5ebdf; --bg-soft: #faf2e8;
+  --ink: #2a1f1a; --ink-soft: #6a5848; --ink-faint: #b09680;
+  --accent: #a04a3a; --accent-soft: #b87060;
+  --jade: #5a8a4a; --plum: #8a5a7a; --celadon: #7a8a4a; --crimson: #a0383a;
+}
+html[data-palette="qing-ci"] {
+  --bg-deep: #0d141a; --bg-mid: #142028; --bg-soft: #1a2832;
+  --ink: #e8eef0; --ink-soft: #a8b8b8; --ink-faint: #5a6868;
+  --accent: #7fb4a8; --accent-soft: #5f9080;
+  --jade: #6a9a8a; --plum: #5a6a8a; --celadon: #8aa890; --crimson: #b06e7e;
+}
+html[data-palette="zhu-xuan"] {
+  --bg-deep: #100808; --bg-mid: #1a1010; --bg-soft: #221616;
+  --ink: #ece4d8; --ink-soft: #b8a8a4; --ink-faint: #6a5a58;
+  --accent: #d04030; --accent-soft: #a03020;
+  --jade: #4a8870; --plum: #4a4a7a; --celadon: #c0b070; --crimson: #a02828;
+}
+
+/* ───────────────────────── 撞色八房：每个 panel 自己的色卡 ─────────────────────────
+   :has() 在 macOS WebView (WebKit 14+) 全支持，零 JS 改动
+   每张色卡含 5 个 token:
+     --backdrop-top  浮面板色 (sidebar/CC cream)
+     --backdrop-bot  主区满铺色 (deep)
+     --section-c     nav active + sidebar 强调 (与 bot 同色或微调，用于 cream 底)
+     --ink-main      主区文字 (warm cream / cool ice，按色家族微调)
+     --ink-soft-main 主区次要文字
+     --ink-faint-main 主区淡注 (mono 小字)
+     --accent-warm   主区互补强调色 (按钮 / 已勾 / 数字 / weekly task)
+*/
+body:has(#panel-tasks.active)   {
+  --backdrop-top: #d8dccc; --backdrop-bot: #698E6A; --section-c: #698E6A;
+  --ink-main: #f0ede0; --ink-soft-main: #d4d6c2; --ink-faint-main: #a8b09c;
+  --accent-warm: #dbc88d;
+  --section-name: '今日 · Today';
+}
+body:has(#panel-attrs.active)   {
+  --backdrop-top: #e6eef0; --backdrop-bot: #5a6a8a; --section-c: #5a6a8a;
+  --ink-main: #ecf0f2; --ink-soft-main: #c0cad4; --ink-faint-main: #94a0ac;
+  --accent-warm: #f0b888;
+  --section-name: '属性 · Aspects';
+}
+body:has(#panel-record.active)  {
+  --backdrop-top: #ede5dc; --backdrop-bot: #a85a5a; --section-c: #a85a5a;
+  --ink-main: #f5e8d4; --ink-soft-main: #d8c0a8; --ink-faint-main: #a8907a;
+  --accent-warm: #f0d870;
+  --section-name: '记录 · Records';
+}
+body:has(#panel-journal.active) {
+  --backdrop-top: #e5dfd5; --backdrop-bot: #7C739F; --section-c: #7C739F;
+  --ink-main: #ecdde6; --ink-soft-main: #c8b8cc; --ink-faint-main: #98889c;
+  --accent-warm: #f0c8b0;
+  --section-name: '日记 · Journal';
+}
+body:has(#panel-ledger.active)  {
+  --backdrop-top: #f0e6c8; --backdrop-bot: #aa8534; --section-c: #aa8534;
+  --ink-main: #f8f0db; --ink-soft-main: #edddb0; --ink-faint-main: #c8b890;
+  --accent-warm: #a8d4b8;
+  --section-name: '记账 · Ledger';
+}
+body:has(#panel-shop.active)    {
+  --backdrop-top: #f0d8d8; --backdrop-bot: #db5a6b; --section-c: #db5a6b;
+  --ink-main: #f5dde2; --ink-soft-main: #d8b8c0; --ink-faint-main: #a88890;
+  --accent-warm: #b8d4d4;
+  --section-name: '商店 · Market';
+}
+body:has(#panel-long.active)    {
+  --backdrop-top: #d0dfe6; --backdrop-bot: #2486b9; --section-c: #2486b9;
+  --ink-main: #e8f0f4; --ink-soft-main: #b8cdd8; --ink-faint-main: #88a0ac;
+  --accent-warm: #f8c898;
+  --section-name: '长程 · Long arc';
+}
+body:has(#panel-cc.active)      {
+  --backdrop-top: #edd4be; --backdrop-bot: #d68a55; --section-c: #d68a55;
+  --ink-main: #f5e6d2; --ink-soft-main: #d8c0a8; --ink-faint-main: #a89880;
+  --accent-warm: #88a890;
+  --section-name: 'CC · Companion';
+}
+
+/* ───────────────────────── 章鱼/小毛球切换 ─────────────────────────
+   切换方式：document.documentElement.dataset.mascot = 'mochi' */
+html[data-mascot="octopus"] [data-mascot-kind="mochi"] { display: none; }
+html[data-mascot="mochi"]   [data-mascot-kind="octopus"] { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════
+   窗体：macOS 960×720 · 撞色满铺 + 浮面板
+   ═══════════════════════════════════════════════════════════════ */
+
+html { background: transparent; height: 100%; }
+body {
+  background: var(--backdrop-bot, var(--bg-deep));
+  color: var(--ink);
+  font-family: var(--serif);
+  height: 100vh;
+  overflow: hidden;
+  border-radius: 14px;
+  padding: 14px;
+  transition: background 380ms ease;
+}
+
+/* 主区水墨晕染（透过主区背景看到） */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(680px 460px at 92% 8%,  color-mix(in srgb, var(--backdrop-top) 16%, transparent), transparent 60%),
+    radial-gradient(420px 320px at 4% 96%,  color-mix(in srgb, var(--backdrop-top) 20%, transparent), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 380ms ease;
+}
+
+.window {
+  display: grid;
+  grid-template-columns: 196px 1fr;
+  grid-template-rows: 1fr auto;
+  grid-template-areas:
+    "side main"
+    "side cc  ";
+  gap: 14px;
+  height: 100%;
+  padding: 30px 14px 14px;
+  position: relative;
+  z-index: 1;
+}
+
+/* macOS 窗口拖动条：覆盖整个顶部 28px；traffic light 按钮是系统级，会优先接管点击 */
+.drag-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  -webkit-app-region: drag;
+  app-region: drag;
+  z-index: 99;
+  pointer-events: auto;
+}
+/* 拖动条内可能压到的按钮恢复可点击 */
+.drag-bar button,
+.drag-bar a,
+.drag-bar input {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+.b-side { grid-area: side; }
+.b-main { grid-area: main; }
+.b-cc   { grid-area: cc; }
+
+/* ───────────────────────── 浮面板（sidebar + CC） ───────────────────────── */
+.b-side, .b-cc {
+  background: color-mix(in srgb, var(--backdrop-top) 94%, transparent);
+  border: 0.5px solid color-mix(in srgb, black 6%, transparent);
+  border-radius: 14px;
+  box-shadow:
+    0 8px 24px color-mix(in srgb, black 24%, transparent),
+    0 0 0 0.5px color-mix(in srgb, white 30%, transparent) inset;
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  color: #2a2820;
+  display: flex;
+  flex-direction: column;
+  transition: background 380ms ease;
+}
+.b-side { padding: 38px 18px 14px; }
+.b-cc   {
+  padding: 12px 22px 12px 18px;
+  flex-direction: row;
+  align-items: center;
+  gap: 18px;
+  height: 80px;
+}
+
+/* 主区 (透明，让窗体撞色直接透出) */
+.b-main {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 36px 24px;
+  isolation: isolate;
+  /* 主区色卡：使用每个 panel 自带的 --ink-main 等；fallback 到 backdrop-top 派生 */
+  --ink:       var(--ink-main,       color-mix(in srgb, var(--backdrop-top) 95%, white));
+  --ink-soft:  var(--ink-soft-main,  color-mix(in srgb, var(--backdrop-top) 75%, transparent));
+  --ink-faint: var(--ink-faint-main, color-mix(in srgb, var(--backdrop-top) 50%, transparent));
+  --line:      color-mix(in srgb, var(--backdrop-top) 18%, transparent);
+  --line-soft: color-mix(in srgb, var(--backdrop-top) 10%, transparent);
+  --card:      color-mix(in srgb, var(--backdrop-top) 12%, transparent);
+}
+
+/* ───────────────────────── 主区互补色 (accent-warm) 应用层 ─────────────────────────
+   原本 .b-main 内大量使用 var(--section-c)，但 section-c == backdrop-bot，
+   = bg 同色 → 不可读。把主区里所有 section-c 强调位换成 --accent-warm。
+   sidebar / CC 的浮面板里的 section-c 不动 (那里 bg 是 cream，section-c 当深色强调 OK)。*/
+.b-main .task-group-title::before  { background: var(--accent-warm); }
+.b-main .task-item.done .task-check {
+  background: var(--accent-warm);
+  border-color: var(--accent-warm);
+}
+.b-main .task-item.done .task-check::after {
+  border-color: var(--backdrop-bot);
+}
+.b-main .task-points {
+  color: var(--accent-warm);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--accent-warm) 30%, transparent);
+}
+.b-main .task-item[data-weekly="true"] .task-name { color: var(--accent-warm); }
+.b-main .attr-value { color: var(--accent-warm); }
+.b-main .attr-fill {
+  background: var(--accent-warm);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent-warm) 70%, transparent);
+}
+.b-main .toggle-btn.active {
+  background: var(--accent-warm);
+  border-color: var(--accent-warm);
+  color: var(--backdrop-bot);
+}
+.b-main .toggle-btn.active.crimson {
+  background: var(--crimson);
+  border-color: var(--crimson);
+  color: var(--ink-main);
+}
+.b-main .journal-input:focus { border-color: var(--accent-warm); }
+.b-main .journal-save {
+  background: var(--accent-warm);
+  color: var(--backdrop-bot);
+}
+.b-main .journal-entry { border-left-color: var(--accent-warm); }
+.b-main .ledger-input:focus { border-color: var(--accent-warm); }
+.b-main .ledger-add {
+  background: var(--accent-warm);
+  color: var(--backdrop-bot);
+}
+.b-main .ledger-stat-value { color: var(--accent-warm); }
+.b-main .ledger-entry-amount { color: var(--accent-warm); }
+.b-main .shop-balance::before {
+  background: linear-gradient(90deg, transparent, var(--accent-warm), transparent);
+}
+.b-main .shop-balance-value { color: var(--accent-warm); }
+.b-main .shop-item-cost { color: var(--accent-warm); }
+.b-main .shop-redeem {
+  border-color: var(--accent-warm);
+  color: var(--accent-warm);
+}
+.b-main .shop-redeem:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-warm) 18%, transparent);
+}
+.b-main .shop-redeem:disabled {
+  border-color: var(--ink-faint);
+  color: var(--ink-faint);
+}
+.b-main .placeholder-panel .ph-glyph { color: var(--accent-warm); }
+
+/* 远山 + 竹叶 fil with accent-warm (otherwise they're top-color = pale and invisible) */
+.b-main .b-deco { color: color-mix(in srgb, var(--accent-warm) 35%, var(--backdrop-top) 65%); }
+
+/* ───────────────────────── Sidebar · brand + nav + footer ───────────────────────── */
+.brand {
+  font-family: var(--serif-en);
+  font-weight: 400;
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  color: #2a2820;
+  margin-bottom: 2px;
+}
+.brand-sub {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.28em;
+  color: color-mix(in srgb, #2a2820 55%, transparent);
+  text-transform: uppercase;
+  margin-bottom: 36px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 0 0 auto;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  color: color-mix(in srgb, #2a2820 65%, transparent);
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.18s, color 0.18s;
+}
+.nav-item:hover { color: #2a2820; }
+.nav-item .nav-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--dot, transparent);
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, currentColor 18%, transparent);
+}
+.nav-item .nav-zh { flex: 1; }
+.nav-item .nav-en {
+  font-family: var(--serif-en);
+  font-size: 11px;
+  color: color-mix(in srgb, #2a2820 45%, transparent);
+  font-weight: 300;
+  letter-spacing: 0.12em;
+}
+.nav-item.active {
+  background: color-mix(in srgb, var(--section-c, var(--accent)) 14%, transparent);
+  color: #2a2820;
+}
+.nav-item.active .nav-en { color: var(--section-c, var(--accent)); }
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: -18px; top: 50%;
+  transform: translateY(-50%);
+  width: 2px; height: 16px;
+  background: var(--section-c);
+  border-radius: 1px;
+}
+.nav-divider {
+  height: 1px;
+  background: color-mix(in srgb, #2a2820 8%, transparent);
+  margin: 10px 12px;
+}
+
+/* footer (export/import/reset 缩到 sidebar 底部) */
+.footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, #2a2820 8%, transparent);
+}
+.footer-btn {
+  background: transparent;
+  border: none;
+  color: color-mix(in srgb, #2a2820 55%, transparent);
+  padding: 7px 12px;
+  font-family: var(--serif);
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  letter-spacing: 0.18em;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+.footer-btn:hover {
+  background: color-mix(in srgb, #2a2820 5%, transparent);
+  color: #2a2820;
+}
+
+/* ───────────────────────── Main · long-tone + date + panel ───────────────────────── */
+.long-tone {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  font-family: var(--serif);
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 22px;
+}
+.long-tone .tone-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--ink-faint);
+}
+.long-tone .tone-phase {
+  font-family: var(--serif);
+  color: color-mix(in srgb, var(--ink) 95%, white);
+  font-weight: 400;
+}
+.long-tone .tone-sep {
+  color: var(--ink-faint);
+  margin: 0 4px;
+}
+.long-tone .tone-words em {
+  font-style: normal;
+  color: var(--ink);
+  margin: 0 2px;
+}
+.long-tone .tone-stats {
+  margin-left: auto;
+  display: flex;
+  gap: 16px;
+  font-family: var(--serif-en);
+  font-size: 12px;
+  color: var(--ink-soft);
+  letter-spacing: 0.1em;
+}
+.long-tone .tone-stats b {
+  color: var(--ink);
+  font-weight: 400;
+  font-size: 14px;
+}
+
+.b-date { margin-bottom: 24px; }
+.b-date .md {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: 40px;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+  line-height: 1.05;
+  margin-bottom: 6px;
+}
+.b-date .gz {
+  font-family: var(--serif);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+}
+
+/* ───────────────────────── Panels (general) ───────────────────────── */
+.panel { display: none; }
+.panel.active { display: block; animation: panelFade 0.42s ease; }
+@keyframes panelFade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.panel { max-height: calc(100vh - 300px); overflow-y: auto; padding-right: 4px; }
+.panel::-webkit-scrollbar { width: 6px; }
+.panel::-webkit-scrollbar-track { background: transparent; }
+.panel::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  border-radius: 3px;
+}
+
+/* hidden-by-default original chrome that JS still references */
+#header-date { display: none; }
+
+/* ───────────────────────── Tasks panel ───────────────────────── */
+.task-group { margin-bottom: 22px; }
+.task-group-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-transform: uppercase;
+}
+.task-group-title::before {
+  content: '';
+  width: 4px; height: 4px;
+  background: var(--section-c, var(--accent));
+  transform: rotate(45deg);
+  flex-shrink: 0;
+}
+.task-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+  transition: padding-left 0.2s;
+  border-radius: 4px;
+}
+.task-item:hover { padding-left: 4px; }
+.task-check {
+  width: 16px;
+  height: 16px;
+  border: 1px solid color-mix(in srgb, var(--ink) 40%, transparent);
+  border-radius: 3px;
+  margin-right: 14px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s;
+  position: relative;
+}
+.task-item.done .task-check {
+  background: var(--section-c, var(--accent));
+  border-color: var(--section-c, var(--accent));
+}
+.task-item.done .task-check::after {
+  content: '';
+  width: 4px; height: 7px;
+  border: solid color-mix(in srgb, var(--backdrop-top) 92%, white);
+  border-width: 0 1.3px 1.3px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+.task-info { flex: 1; min-width: 0; }
+.task-name {
+  font-family: var(--serif);
+  font-size: 15px;
+  color: var(--ink);
+  margin-bottom: 1px;
+  font-weight: 300;
+}
+.task-item.done .task-name {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+  text-decoration-thickness: 0.5px;
+}
+.task-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.12em;
+}
+.task-points {
+  font-family: var(--serif-en);
+  font-size: 14px;
+  color: var(--section-c, var(--accent));
+  margin-left: 12px;
+  font-weight: 400;
+}
+.task-points.minus { color: var(--crimson); opacity: 0.85; }
+
+/* ───────────────────────── Attrs panel ───────────────────────── */
+.attr-list { display: grid; gap: 18px; padding-top: 4px; }
+.attr-item { border: none; padding: 0; background: none; }
+.attr-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.attr-name {
+  font-family: var(--serif);
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  color: var(--ink);
+}
+.attr-name-en {
+  font-family: var(--serif-en);
+  font-size: 11px;
+  color: var(--ink-faint);
+  letter-spacing: 0.14em;
+  margin-left: 10px;
+  text-transform: uppercase;
+}
+.attr-value {
+  font-family: var(--serif-en);
+  font-size: 18px;
+  color: var(--section-c);
+  font-weight: 400;
+}
+.attr-bar {
+  height: 1px;
+  background: var(--line);
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+.attr-fill {
+  height: 2px;
+  background: var(--section-c, var(--accent));
+  box-shadow: 0 0 8px var(--section-c, var(--accent));
+  transition: width 0.6s ease;
+  position: absolute;
+  top: -0.5px;
+  border-radius: 1px;
+}
+
+/* ───────────────────────── Record panel ───────────────────────── */
+.record-section { margin-bottom: 28px; }
+.record-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--ink-faint);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  text-transform: uppercase;
+}
+.record-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+}
+.record-item-name {
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--ink);
+  font-weight: 300;
+}
+.toggle-group { display: flex; gap: 6px; }
+.toggle-btn {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--ink) 28%, transparent);
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  letter-spacing: 0.12em;
+}
+.toggle-btn:hover { color: var(--ink); border-color: color-mix(in srgb, var(--ink) 50%, transparent); }
+.toggle-btn.active {
+  background: var(--section-c, var(--accent));
+  border-color: var(--section-c, var(--accent));
+  color: color-mix(in srgb, var(--backdrop-top) 95%, white);
+}
+.toggle-btn.active.crimson {
+  background: var(--crimson);
+  border-color: var(--crimson);
+  color: color-mix(in srgb, var(--backdrop-top) 95%, white);
+}
+
+/* ───────────────────────── Journal panel ───────────────────────── */
+.journal-input {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 14px;
+  font-family: var(--serif);
+  font-size: 14px;
+  border-radius: 6px;
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.7;
+  font-weight: 300;
+}
+.journal-input:focus {
+  outline: none;
+  border-color: var(--section-c, var(--accent));
+}
+.journal-save {
+  background: var(--section-c, var(--accent));
+  color: color-mix(in srgb, var(--backdrop-top) 95%, white);
+  border: none;
+  padding: 9px 22px;
+  font-family: var(--serif);
+  font-size: 13px;
+  letter-spacing: 0.24em;
+  margin-top: 10px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: opacity 0.2s;
+}
+.journal-save:hover { opacity: 0.85; }
+.journal-history { margin-top: 22px; }
+.journal-entry {
+  background: var(--card);
+  padding: 14px;
+  margin-bottom: 8px;
+  border-left: 2px solid var(--section-c, var(--accent));
+  border-radius: 4px;
+}
+.journal-date {
+  font-family: var(--serif-en);
+  font-size: 11px;
+  color: var(--ink-faint);
+  letter-spacing: 0.16em;
+  margin-bottom: 6px;
+}
+.journal-text {
+  font-family: var(--serif);
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  font-weight: 300;
+}
+
+/* ───────────────────────── Ledger panel ───────────────────────── */
+.ledger-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.ledger-stat {
+  background: var(--card);
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  text-align: center;
+}
+.ledger-stat-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-faint);
+  letter-spacing: 0.2em;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.ledger-stat-value {
+  font-family: var(--serif-en);
+  font-size: 22px;
+  color: var(--section-c);
+  font-weight: 400;
+}
+.ledger-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.ledger-input {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 10px 12px;
+  font-family: var(--serif);
+  font-size: 14px;
+  border-radius: 6px;
+  font-weight: 300;
+}
+.ledger-input:focus {
+  outline: none;
+  border-color: var(--section-c, var(--accent));
+}
+.ledger-amount { width: 100px; flex: 0 0 100px; }
+.ledger-add {
+  background: var(--section-c, var(--accent));
+  color: color-mix(in srgb, var(--backdrop-top) 95%, white);
+  border: none;
+  padding: 10px 22px;
+  font-family: var(--serif);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 6px;
+  letter-spacing: 0.2em;
+  margin-bottom: 18px;
+}
+.ledger-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 13px;
+}
+.ledger-entry-info { flex: 1; min-width: 0; }
+.ledger-entry-name { color: var(--ink); margin-bottom: 1px; font-family: var(--serif); }
+.ledger-entry-date { font-family: var(--serif-en); font-size: 10px; color: var(--ink-faint); letter-spacing: 0.14em; }
+.ledger-entry-amount { font-family: var(--serif-en); color: var(--section-c); margin-left: 8px; font-size: 14px; }
+.ledger-delete {
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin-left: 4px;
+}
+.ledger-delete:hover { color: var(--crimson); }
+.sub-section { margin-top: 24px; }
+
+/* ───────────────────────── Shop panel ───────────────────────── */
+.shop-balance {
+  text-align: center;
+  padding: 22px;
+  margin-bottom: 22px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  position: relative;
+}
+.shop-balance::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 12%; right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--section-c), transparent);
+}
+.shop-balance-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.3em;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.shop-balance-value {
+  font-family: var(--serif-en);
+  font-size: 44px;
+  color: var(--section-c);
+  font-weight: 300;
+  line-height: 1;
+}
+.shop-item {
+  background: var(--card);
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.shop-item-info { flex: 1; }
+.shop-item-name {
+  font-family: var(--serif);
+  font-size: 15px;
+  color: var(--ink);
+  margin-bottom: 3px;
+  font-weight: 300;
+}
+.shop-item-desc {
+  font-family: var(--serif);
+  font-size: 11px;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  font-weight: 300;
+}
+.shop-item-cost {
+  font-family: var(--serif-en);
+  color: var(--section-c);
+  font-size: 17px;
+  margin-right: 14px;
+  font-weight: 400;
+}
+.shop-redeem {
+  background: transparent;
+  border: 1px solid var(--section-c);
+  color: var(--section-c);
+  padding: 6px 14px;
+  font-family: var(--serif);
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 6px;
+  letter-spacing: 0.2em;
+  transition: all 0.2s;
+}
+.shop-redeem:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--section-c) 18%, transparent);
+}
+.shop-redeem:disabled {
+  border-color: var(--ink-faint);
+  color: var(--ink-faint);
+  cursor: not-allowed;
+}
+
+/* ───────────────────────── 长程 + CC panel placeholders ───────────────────────── */
+.placeholder-panel {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--ink-faint);
+}
+.placeholder-panel .ph-glyph {
+  font-family: var(--serif);
+  font-size: 36px;
+  color: var(--section-c);
+  margin-bottom: 14px;
+  font-weight: 300;
+  opacity: 0.7;
+}
+.placeholder-panel .ph-line {
+  font-family: var(--serif);
+  font-size: 15px;
+  color: var(--ink-soft);
+  letter-spacing: 0.16em;
+  margin-bottom: 6px;
+  font-weight: 300;
+}
+.placeholder-panel .ph-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* ───────────────────────── empty-state (preserved) ───────────────────────── */
+.empty-state {
+  text-align: center;
+  color: var(--ink-faint);
+  padding: 40px 20px;
+  font-style: italic;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  font-family: var(--serif);
+}
+
+/* ───────────────────────── 印章 .seal (preserved) ───────────────────────── */
+.seal {
+  display: inline-block;
+  padding: 4px 8px;
+  border: 1px solid var(--crimson);
+  color: var(--crimson);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  font-family: var(--serif);
+}
+
+/* ───────────────────────── CC 横栏 · 章鱼 + 最新一句 + 输入 ───────────────────────── */
+.cc-portrait {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.cc-portrait .cc-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cc-name {
+  font-family: var(--serif);
+  font-size: 13px;
+  color: #2a2820;
+  letter-spacing: 0.18em;
+}
+.cc-state {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: color-mix(in srgb, #2a2820 50%, transparent);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.cc-state .dot {
+  display: inline-block;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--celadon);
+  margin-right: 5px;
+  vertical-align: 1px;
+}
+.cc-divider {
+  width: 1px;
+  height: 36px;
+  background: color-mix(in srgb, #2a2820 10%, transparent);
+  flex-shrink: 0;
+}
+.cc-messages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+}
+/* 横栏里只显示最新一条 — 老消息进 panel-cc 历史 */
+.cc-messages > .cc-msg:not(:last-child) { display: none; }
+.cc-msg {
+  font-family: var(--serif);
+  font-size: 13.5px;
+  line-height: 1.5;
+  font-weight: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cc-msg .who {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: color-mix(in srgb, #2a2820 45%, transparent);
+  text-transform: uppercase;
+}
+.cc-msg.cc .who { color: #c87a4a; }
+.cc-msg .text {
+  color: color-mix(in srgb, #2a2820 88%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-msg.me .text { color: #2a2820; }
+
+.cc-input-row {
+  width: 320px;
+  padding: 9px 14px;
+  background: color-mix(in srgb, #2a2820 4%, transparent);
+  border: 1px solid color-mix(in srgb, #2a2820 8%, transparent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.cc-input-row:focus-within {
+  border-color: color-mix(in srgb, #c87a4a 50%, transparent);
+  background: color-mix(in srgb, #2a2820 2%, transparent);
+}
+.cc-input-row input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: #2a2820;
+  font-family: var(--serif);
+  font-size: 13px;
+  min-width: 0;
+}
+.cc-input-row input::placeholder {
+  color: color-mix(in srgb, #2a2820 40%, transparent);
+  font-style: italic;
+}
+.cc-input-row .send {
+  font-family: var(--serif-en);
+  color: #c87a4a;
+  font-size: 14px;
+  opacity: 0.7;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ───────────────────────── 章鱼/小毛球吉祥物 ───────────────────────── */
+.octo {
+  width: 56px; height: 56px;
+  position: relative;
+  filter: drop-shadow(0 4px 14px color-mix(in srgb, #d97757 28%, transparent));
+  animation: mascot-breathe 4.8s ease-in-out infinite;
+  transform-origin: 50% 65%;
+  flex-shrink: 0;
+}
+.octo svg { width: 100%; height: 100%; display: block; }
+@keyframes mascot-breathe {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50%      { transform: scale(1.035) translateY(-0.5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .octo { animation: none; }
+}
+
+/* ───────────────────────── 远山 + 竹叶 ───────────────────────── */
+.b-deco {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  color: color-mix(in srgb, var(--backdrop-top) 65%, transparent);
+}
+.b-deco.leaves {
+  top: 22px; right: 24px;
+  width: 160px; height: 160px;
+  opacity: 0.5;
+}
+.b-deco.mountains {
+  bottom: 0; left: 0; right: 0;
+  width: 100%;
+  height: 96px;
+  opacity: 0.4;
+}
+.b-main > *:not(.b-deco) { position: relative; z-index: 1; }
+
+/* ───────────────────────── 鼓励语弹窗 (preserved + 微调) ───────────────────────── */
+.toast-wrap {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.92);
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-width: 360px;
+  width: 60%;
+}
+.toast-wrap.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+.toast {
+  background: color-mix(in srgb, var(--backdrop-top) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--section-c, var(--accent)) 35%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 30px 28px;
+  text-align: center;
+  border-radius: 8px;
+  position: relative;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.32);
+}
+.toast::before, .toast::after {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  border: 1px solid var(--section-c, var(--accent));
+}
+.toast::before {
+  top: -1px; left: -1px;
+  border-right: none; border-bottom: none;
+}
+.toast::after {
+  bottom: -1px; right: -1px;
+  border-left: none; border-top: none;
+}
+.toast-points {
+  font-family: var(--serif-en);
+  font-size: 30px;
+  color: var(--section-c, var(--accent));
+  margin-bottom: 12px;
+  font-weight: 300;
+}
+.toast-points.minus { color: var(--crimson); }
+.toast-message {
+  font-family: var(--serif);
+  font-size: 14.5px;
+  color: #2a2820;
+  line-height: 1.75;
+  letter-spacing: 0.04em;
+  font-weight: 300;
+}
+</style>
+</head>
+<body>
+
+<div class="drag-bar" aria-hidden="true"></div>
+
+<div class="window">
+
+  <!-- ═══════════ Sidebar ═══════════ -->
+  <aside class="b-side">
+    <div class="brand" style="color: rgb(71, 58, 5)">norvera</div>
+    <div class="brand-sub" style="color: rgb(36, 61, 169)">贞元 · 大端</div>
+
+    <nav class="nav">
+      <div class="nav-item active" data-panel="tasks">
+        <span class="nav-dot" style="--dot: #698E6A"></span>
+        <span class="nav-zh" style="color: rgb(36, 106, 38)">今日</span>
+        <span class="nav-en" style="color: rgb(105, 142, 106)">Today</span>
+      </div>
+      <div class="nav-item" data-panel="attrs">
+        <span class="nav-dot" style="--dot: #5a6a8a"></span>
+        <span class="nav-zh" style="color: rgb(50, 69, 106)">属性</span>
+        <span class="nav-en" style="color: rgb(90, 106, 138)">Aspects</span>
+      </div>
+      <div class="nav-item" data-panel="record">
+        <span class="nav-dot" style="--dot: #a85a5a"></span>
+        <span class="nav-zh" style="color: rgb(113, 29, 29)">记录</span>
+        <span class="nav-en" style="color: rgb(168, 90, 90)">Records</span>
+      </div>
+      <div class="nav-item" data-panel="journal">
+        <span class="nav-dot" style="--dot: #7C739F"></span>
+        <span class="nav-zh" style="color: rgb(90, 81, 126)">日记</span>
+        <span class="nav-en" style="color: rgb(124, 115, 159)">Journal</span>
+      </div>
+      <div class="nav-item" data-panel="ledger">
+        <span class="nav-dot" style="--dot: #aa8534"></span>
+        <span class="nav-zh" style="color: rgb(89, 70, 28)">记账</span>
+        <span class="nav-en" style="color: rgb(170, 133, 52)">Ledger</span>
+      </div>
+      <div class="nav-item" data-panel="shop">
+        <span class="nav-dot" style="--dot: #db5a6b"></span>
+        <span class="nav-zh" style="color: rgb(144, 53, 65)">商店</span>
+        <span class="nav-en">Market</span>
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-item" data-panel="long">
+        <span class="nav-dot" style="--dot: #2486b9"></span>
+        <span class="nav-zh" style="color: rgb(7, 65, 95)">长程</span>
+        <span class="nav-en" style="color: rgb(36, 134, 185)">Long arc</span>
+      </div>
+      <div class="nav-item" data-panel="cc">
+        <span class="nav-dot" style="--dot: #d68a55"></span>
+        <span class="nav-zh" style="color: rgb(151, 86, 28)">CC</span>
+        <span class="nav-en" style="color: rgb(214, 138, 85)">Companion</span>
+      </div>
+    </nav>
+
+    <!-- 导出 / 读取 / 归零 (id 保留) -->
+    <div class="footer">
+      <button class="footer-btn" id="export-btn">导出存档</button>
+      <button class="footer-btn" id="import-btn">读取存档</button>
+      <button class="footer-btn" id="reset-btn">归零</button>
+    </div>
+  </aside>
+
+  <!-- ═══════════ Main ═══════════ -->
+  <main class="b-main">
+
+    <!-- 远山 + 竹叶 -->
+    <svg class="b-deco leaves" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <line x1="78" y1="200" x2="58" y2="8"  stroke="currentColor" stroke-width="1.4" opacity="0.45"/>
+      <line x1="142" y1="200" x2="160" y2="36" stroke="currentColor" stroke-width="1.1" opacity="0.35"/>
+      <g fill="currentColor">
+        <ellipse cx="50"  cy="32"  rx="3.6" ry="22" transform="rotate(25 50 32)"  opacity="0.62"/>
+        <ellipse cx="68"  cy="55"  rx="3"   ry="20" transform="rotate(50 68 55)"  opacity="0.55"/>
+        <ellipse cx="38"  cy="80"  rx="3.6" ry="24" transform="rotate(-15 38 80)" opacity="0.66"/>
+        <ellipse cx="86"  cy="76"  rx="3"   ry="18" transform="rotate(70 86 76)"  opacity="0.45"/>
+        <ellipse cx="155" cy="62"  rx="3"   ry="20" transform="rotate(35 155 62)" opacity="0.52"/>
+        <ellipse cx="172" cy="92"  rx="3"   ry="18" transform="rotate(60 172 92)" opacity="0.42"/>
+        <ellipse cx="142" cy="105" rx="3"   ry="22" transform="rotate(-20 142 105)" opacity="0.55"/>
+        <ellipse cx="120" cy="120" rx="2.6" ry="16" transform="rotate(85 120 120)" opacity="0.38"/>
+      </g>
+    </svg>
+    <svg class="b-deco mountains" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 100 Q40 64 80 78 T160 70 T240 76 T320 64 T400 80 L400 120 L0 120 Z" fill="currentColor" opacity="0.38"/>
+      <path d="M0 108 Q60 88 120 100 T240 95 T360 102 T400 108 L400 120 L0 120 Z" fill="currentColor" opacity="0.26"/>
+    </svg>
+
+    <!-- 长程调子 -->
+    <div class="long-tone" id="long-tone">
+      <span class="tone-label" style="color: rgb(217, 207, 184)">调</span>
+      <span class="tone-phase">商业策划 · Phase 二</span>
+      <span class="tone-sep">/</span>
+      <span class="tone-words"><em>慢深</em>　<em>真名</em>　<em>不堆量</em></span>
+      <!-- stat 显示位 (id 保留供 JS) -->
+      <div class="tone-stats">
+        <span><b id="stat-points">0</b>&nbsp;分</span>
+        <span><b id="stat-streak">0</b>&nbsp;日</span>
+      </div>
+    </div>
+
+    <!-- 日期 -->
+    <div class="b-date">
+      <div class="md" id="date-md">五月廿一</div>
+      <div class="gz" id="date-gz">丙午岁 · 癸巳月 · 戊辰日</div>
+    </div>
+
+    <!-- ═══════ 6 个原有 panel (id 保留, 内部 DOM 全保留) ═══════ -->
+
+    <div class="panel active" id="panel-tasks">
+      <div id="tasks-container"></div>
+    </div>
+
+    <div class="panel" id="panel-attrs">
+      <div class="attr-list" id="attrs-container"></div>
+    </div>
+
+    <div class="panel" id="panel-record">
+      <div class="record-section">
+        <div class="record-title">今日晚餐</div>
+        <div class="record-item">
+          <div class="record-item-name">是否进食</div>
+          <div class="toggle-group">
+            <button class="toggle-btn" data-record="dinner" data-val="no">不食</button>
+            <button class="toggle-btn" data-record="dinner" data-val="yes">食</button>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: var(--ink-faint); padding: 10px 4px; line-height: 1.7; letter-spacing: 0.06em; font-family: var(--serif); font-weight: 300;">
+          过午不食为常，调身时随顺所需。两者皆是。
+        </div>
+      </div>
+
+      <div class="record-section">
+        <div class="record-title">月相 · Cycle</div>
+        <div class="record-item">
+          <div class="record-item-name">今日记录</div>
+          <div class="toggle-group">
+            <button class="toggle-btn crimson" data-record="period" data-val="start">来潮</button>
+            <button class="toggle-btn" data-record="period" data-val="ongoing">行经</button>
+            <button class="toggle-btn" data-record="period" data-val="end">结束</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="record-section">
+        <div class="record-title">近三十日</div>
+        <div id="record-history"></div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-journal">
+      <div class="record-title">今日笔记</div>
+      <textarea class="journal-input" id="journal-input" placeholder="两三句话即可。今日做了什么、想了什么、感受到了什么。"></textarea>
+      <button class="journal-save" id="journal-save">收笔</button>
+      <div class="journal-history" id="journal-history"></div>
+    </div>
+
+    <div class="panel" id="panel-ledger">
+      <div class="ledger-summary">
+        <div class="ledger-stat">
+          <div class="ledger-stat-label" style="color: rgb(250, 229, 179)">本月支出</div>
+          <div class="ledger-stat-value" id="ledger-month">¥0</div>
+        </div>
+        <div class="ledger-stat">
+          <div class="ledger-stat-label" style="color: rgb(250, 229, 179)">本月笔数</div>
+          <div class="ledger-stat-value" id="ledger-count">0</div>
+        </div>
+      </div>
+      <div class="ledger-input-row">
+        <input class="ledger-input" id="ledger-name" placeholder="项目（如 Mac 月供）" style="background-color: rgba(250, 241, 241, 0.165)">
+        <input class="ledger-input ledger-amount" id="ledger-amount" type="number" placeholder="金额">
+      </div>
+      <button class="ledger-add" id="ledger-add" style="width: 100%; color: rgb(255, 243, 220); background-color: rgb(111, 177, 148)">记一笔</button>
+      <div class="sub-section">
+        <div class="record-title" style="border-color: rgba(250, 229, 179, 0.827)">明细</div>
+        <div id="ledger-entries"></div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-shop">
+      <div class="shop-balance">
+        <div class="shop-balance-label">Available Points</div>
+        <div class="shop-balance-value" id="shop-points">0</div>
+      </div>
+      <div id="shop-items"></div>
+      <div class="sub-section">
+        <div class="record-title" style="color: rgb(246, 198, 210); border-color: rgb(246, 198, 210)">已兑换</div>
+        <div id="shop-history"></div>
+      </div>
+    </div>
+
+    <!-- ═══════ 新增 panel (占位，工程层将来填) ═══════ -->
+
+    <div class="panel" id="panel-long">
+      <div class="placeholder-panel">
+        <div class="ph-glyph">远</div>
+        <div class="ph-line">长程项目 · 调子 · 子任务</div>
+        <div class="ph-sub">Long-arc · Phase · Sub-tasks</div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-cc">
+      <div class="placeholder-panel">
+        <div class="ph-glyph">章</div>
+        <div class="ph-line">CC 在下方常驻 · 此处放完整对话历史 / 设置</div>
+        <div class="ph-sub">Companion · Full view</div>
+      </div>
+    </div>
+
+    <!-- 给 JS 的 header-date 容器（保留 id，不显示） -->
+    <span id="header-date"></span>
+  </main>
+
+  <!-- ═══════════ CC 横栏 ═══════════ -->
+  <aside class="b-cc">
+    <div class="cc-portrait">
+      <div id="clawd" class="octo"></div>
+      <div class="cc-meta">
+        <div class="cc-name">CC</div>
+        <div class="cc-state"><span class="dot"></span>在听</div>
+      </div>
+    </div>
+    <div class="cc-divider"></div>
+    <div class="cc-messages" id="cc-messages">
+      <div class="cc-msg cc">
+        <div class="who">CC · 07:42</div>
+        <div class="text">今天的静坐怎样？</div>
+      </div>
+      <div class="cc-msg me">
+        <div class="who">我 · 07:43</div>
+        <div class="text">杂念多，第七分钟才静下来。</div>
+      </div>
+      <div class="cc-msg cc">
+        <div class="who">CC · 07:44</div>
+        <div class="text">杂念也是流过的风，让它走。要不要写两行进日记？</div>
+      </div>
+    </div>
+    <div class="cc-input-row">
+      <input id="cc-input" placeholder="对 CC 说……" />
+      <span class="send">↵</span>
+    </div>
+  </aside>
+
+</div>
+
+<!-- ═══════════ Toast popup (preserved) ═══════════ -->
+<div class="toast-wrap" id="toast">
+  <div class="toast">
+    <div class="toast-points" id="toast-points"></div>
+    <div class="toast-message" id="toast-message"></div>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".json" style="display:none;">
+
+<!-- ═══════════ 章鱼 / 小毛球 SVG templates ═══════════ -->
+<template id="mascot-octopus-tpl">
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <radialGradient id="oct-body" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#f0a878"/>
+      <stop offset="55%" stop-color="#d68a55"/>
+      <stop offset="100%" stop-color="#a05f30"/>
+    </radialGradient>
+    <radialGradient id="oct-shine" cx="30%" cy="22%" r="22%">
+      <stop offset="0%" stop-color="rgba(255,235,200,0.85)"/>
+      <stop offset="100%" stop-color="rgba(255,235,200,0)"/>
+    </radialGradient>
+  </defs>
+  <!-- 两只圆球小手手 -->
+  <g fill="url(#oct-body)">
+    <circle cx="14" cy="68" r="9"/>
+    <circle cx="86" cy="68" r="9"/>
+  </g>
+  <!-- 四条腿 -->
+  <g fill="url(#oct-body)">
+    <ellipse cx="30" cy="80" rx="7" ry="13"/>
+    <ellipse cx="44" cy="82" rx="7" ry="13"/>
+    <ellipse cx="56" cy="82" rx="7" ry="13"/>
+    <ellipse cx="70" cy="80" rx="7" ry="13"/>
+  </g>
+  <!-- 身体 -->
+  <ellipse cx="50" cy="48" rx="34" ry="32" fill="url(#oct-body)"/>
+  <ellipse cx="40" cy="34" rx="20" ry="14" fill="url(#oct-shine)"/>
+  <ellipse cx="40" cy="50" rx="3.4" ry="4.2" fill="#1a0f08"/>
+  <ellipse cx="60" cy="50" rx="3.4" ry="4.2" fill="#1a0f08"/>
+  <circle cx="41" cy="48.5" r="1" fill="#fff" opacity="0.85"/>
+  <circle cx="61" cy="48.5" r="1" fill="#fff" opacity="0.85"/>
+  <path d="M46 60 Q50 63 54 60" stroke="#1a0f08" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.6"/>
+</svg>
+</template>
+
+<template id="mascot-mochi-tpl">
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <radialGradient id="mq-body" cx="35%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#fbc592"/>
+      <stop offset="55%" stop-color="#e89657"/>
+      <stop offset="100%" stop-color="#a85a2a"/>
+    </radialGradient>
+    <radialGradient id="mq-fluff" cx="40%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#f4b07a"/>
+      <stop offset="100%" stop-color="#c87a3a"/>
+    </radialGradient>
+    <radialGradient id="mq-shine" cx="30%" cy="22%" r="22%">
+      <stop offset="0%" stop-color="rgba(255,240,210,0.85)"/>
+      <stop offset="100%" stop-color="rgba(255,240,210,0)"/>
+    </radialGradient>
+    <radialGradient id="mq-cheek" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="rgba(232,120,120,0.55)"/>
+      <stop offset="100%" stop-color="rgba(232,120,120,0)"/>
+    </radialGradient>
+  </defs>
+  <g fill="#a85a2a">
+    <ellipse cx="40" cy="86" rx="5" ry="2.6"/>
+    <ellipse cx="60" cy="86" rx="5" ry="2.6"/>
+  </g>
+  <g fill="url(#mq-fluff)">
+    <ellipse cx="50" cy="18" rx="6" ry="9"/>
+    <ellipse cx="68" cy="22" rx="6" ry="9" transform="rotate(30 68 22)"/>
+    <ellipse cx="82" cy="34" rx="6" ry="9" transform="rotate(55 82 34)"/>
+    <ellipse cx="88" cy="50" rx="6" ry="9" transform="rotate(85 88 50)"/>
+    <ellipse cx="84" cy="66" rx="6" ry="9" transform="rotate(115 84 66)"/>
+    <ellipse cx="72" cy="78" rx="6" ry="9" transform="rotate(150 72 78)"/>
+    <ellipse cx="28" cy="78" rx="6" ry="9" transform="rotate(-150 28 78)"/>
+    <ellipse cx="16" cy="66" rx="6" ry="9" transform="rotate(-115 16 66)"/>
+    <ellipse cx="12" cy="50" rx="6" ry="9" transform="rotate(-85 12 50)"/>
+    <ellipse cx="18" cy="34" rx="6" ry="9" transform="rotate(-55 18 34)"/>
+    <ellipse cx="32" cy="22" rx="6" ry="9" transform="rotate(-30 32 22)"/>
+  </g>
+  <circle cx="50" cy="50" r="28" fill="url(#mq-body)"/>
+  <ellipse cx="40" cy="40" rx="16" ry="10" fill="url(#mq-shine)"/>
+  <ellipse cx="34" cy="58" rx="6" ry="4" fill="url(#mq-cheek)"/>
+  <ellipse cx="66" cy="58" rx="6" ry="4" fill="url(#mq-cheek)"/>
+  <ellipse cx="42" cy="50" rx="2.4" ry="3" fill="#2a1810"/>
+  <ellipse cx="58" cy="50" rx="2.4" ry="3" fill="#2a1810"/>
+  <circle cx="42.6" cy="49" r="0.8" fill="#fff" opacity="0.9"/>
+  <circle cx="58.6" cy="49" r="0.8" fill="#fff" opacity="0.9"/>
+  <path d="M47 58 Q50 60 53 58" stroke="#2a1810" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.7"/>
+</svg>
+</template>
+
+<script>
+// ============= 配置 =============
+
+const TASK_GROUPS = [
+  {
+    id: 'rhythm',
+    name: '日常节奏 · Rhythm',
+    tasks: [
+      { id: 'morning_qigong', name: '早操', points: 10, attrs: ['body', 'clarity'] },
+      { id: 'breakfast', name: '早餐', points: 8, attrs: ['body'] },
+      { id: 'lunch_record', name: '午餐记录', points: 5, attrs: ['body'] },
+      { id: 'evening_qigong', name: '晚操', points: 10, attrs: ['body', 'lightness'] },
+      { id: 'wash_hair', name: '洗头', points: 5, attrs: ['clarity'] },
+      { id: 'shower', name: '洗澡', points: 5, attrs: ['clarity'] }
+    ]
+  },
+  {
+    id: 'work',
+    name: '工作 · Work',
+    tasks: [
+      { id: 'zhuangzi_class', name: '庄子课（每周）', points: 30, attrs: ['intellect', 'gaze'], weekly: true },
+    ]
+  },
+  {
+    id: 'cultivation',
+    name: '修行 · Cultivation',
+    tasks: [
+      { id: 'self_check', name: '自我check（recheck近期判断）', points: 12, attrs: ['gaze', 'lightness'] },
+      { id: 'karma_clear', name: '因果查询与清理', points: 12, attrs: ['gaze', 'clarity'] }
+    ]
+  },
+  {
+    id: 'minus',
+    name: '扣分项 · Deductions',
+    tasks: [
+      { id: 'late_night', name: '熬夜', points: -8, attrs: [], minus: true },
+      { id: 'no_recheck', name: '结论未recheck就写入认知', points: -6, attrs: [], minus: true },
+      { id: 'fly_too_high', name: '飞太高没看脚下', points: -6, attrs: [], minus: true },
+      { id: 'judge_others', name: '在情绪里替别人下定论', points: -6, attrs: [], minus: true }
+    ]
+  }
+];
+
+const ATTRIBUTES = [
+  { id: 'body', name: '身', en: 'Body' },
+  { id: 'clarity', name: '清明', en: 'Clarity' },
+  { id: 'intellect', name: '智识', en: 'Intellect' },
+  { id: 'gaze', name: '凝视', en: 'Gaze' },
+  { id: 'lightness', name: '轻盈', en: 'Lightness' }
+];
+
+const SHOP_ITEMS = [
+  { id: 'rest_day', name: '一天什么都不干的休息日', desc: '哪怕实际生活和平常一样，光是这个名头就够了', cost: 200 },
+  { id: 'mac_payment', name: 'Mac 月供', desc: '攒够了庆祝一下还款这件事', cost: 150 },
+  { id: 'claude_max', name: 'Claude Max 续订', desc: '继续养这个对话伙伴', cost: 150 },
+  { id: 'milk_tea', name: '一杯奶茶', desc: '小确幸', cost: 30 },
+  { id: 'takeout', name: '点一次外卖', desc: '允许自己懒一次', cost: 40 },
+  { id: 'book', name: '买一本书', desc: '智识的投喂', cost: 60 },
+  { id: 'long_walk', name: '一个下午的散步', desc: '什么都不想，只是走', cost: 50 }
+];
+
+const ENCOURAGEMENTS_PLUS = [
+  '把铁轨切对了方向。',
+  '今日所做，皆是being。',
+  '凝视者的灯仍亮。',
+  '一个动作，胜过十个领悟。',
+  '空荡而透明，长久地凝视。',
+  '泰坦今日仍站在大地母亲上。',
+  '不是变好，是回到自己。',
+  '此一念，是你自己点的。',
+  '枢未失其环中。',
+  '糖与盐之间，得其度。',
+  '草稿落下来，被自己接住。',
+  '身在这里，is enough。',
+  '今日的轻，不是飘。',
+  '一刻的清明，胜过一日的奔忙。',
+  '你养你自己的方式，是道。'
+];
+
+const ENCOURAGEMENTS_MINUS = [
+  '看见就好，不必苛责。',
+  '看一眼脚下，再走。',
+  '不是失败，是信号。',
+  '回到身体，回到当下。',
+  '草稿就是草稿。归位。',
+  '飞高了的话，先落下来吃饭。',
+  '今天向自己道一声慢。',
+  '让风过去，不必追风。'
+];
+
+// ============= 状态管理 =============
+
+const STORAGE_KEY = 'zhenyuan_quest_v1';
+
+const defaultState = {
+  points: 0,
+  totalEarned: 0,
+  streak: 0,
+  lastActiveDate: null,
+  todayTasks: {},
+  todayDate: null,
+  weeklyTasks: {},
+  attrs: { body: 0, clarity: 0, intellect: 0, gaze: 0, lightness: 0 },
+  records: { dinner: {}, period: {} },
+  journal: [],
+  ledger: [],
+  redeemed: []
+};
+
+let state = loadState();
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return { ...defaultState, ...parsed };
+    }
+  } catch (e) { console.error(e); }
+  return { ...defaultState };
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) { console.error(e); }
+}
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function weekStr() {
+  const d = new Date();
+  const start = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil((((d - start) / 86400000) + start.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${week}`;
+}
+
+function checkDateChange() {
+  const today = todayStr();
+  if (state.todayDate !== today) {
+    if (state.lastActiveDate) {
+      const last = new Date(state.lastActiveDate);
+      const cur = new Date(today);
+      const diff = Math.round((cur - last) / 86400000);
+      if (diff === 1) state.streak += 1;
+      else if (diff > 1) state.streak = 0;
+    }
+    state.todayTasks = {};
+    state.todayDate = today;
+    saveState();
+  }
+}
+
+// ============= 渲染 =============
+
+function renderHeader() {
+  const d = new Date();
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('header-date').textContent =
+    `${months[d.getMonth()]} ${d.getDate()} · ${d.getFullYear()}`;
+}
+
+function renderStats() {
+  document.getElementById('stat-points').textContent = state.points;
+  document.getElementById('stat-streak').textContent = state.streak;
+  document.getElementById('shop-points').textContent = state.points;
+}
+
+function renderTasks() {
+  const container = document.getElementById('tasks-container');
+  const week = weekStr();
+
+  container.innerHTML = TASK_GROUPS.map(group => `
+    <div class="task-group">
+      <div class="task-group-title">${group.name}</div>
+      ${group.tasks.map(task => {
+        const isDone = task.weekly
+          ? state.weeklyTasks[task.id] === week
+          : state.todayTasks[task.id];
+        return `
+          <div class="task-item ${isDone ? 'done' : ''}" data-task="${task.id}" data-weekly="${task.weekly || false}">
+            <div class="task-check"></div>
+            <div class="task-info">
+              <div class="task-name">${task.name}</div>
+              <div class="task-meta">${task.weekly ? 'WEEKLY' : ''} ${task.attrs.length ? '· ' + task.attrs.map(a => ATTRIBUTES.find(x=>x.id===a)?.name).join(' / ') : ''}</div>
+            </div>
+            <div class="task-points ${task.minus ? 'minus' : ''}">${task.points > 0 ? '+' : ''}${task.points}</div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.task-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const taskId = el.dataset.task;
+      const isWeekly = el.dataset.weekly === 'true';
+      toggleTask(taskId, isWeekly);
+    });
+  });
+}
+
+function renderAttrs() {
+  const container = document.getElementById('attrs-container');
+  const max = Math.max(...Object.values(state.attrs), 100);
+  container.innerHTML = ATTRIBUTES.map(attr => {
+    const val = state.attrs[attr.id] || 0;
+    const pct = Math.min((val / max) * 100, 100);
+    return `
+      <div class="attr-item">
+        <div class="attr-header">
+          <div>
+            <span class="attr-name">${attr.name}</span>
+            <span class="attr-name-en">${attr.en}</span>
+          </div>
+          <div class="attr-value">${val}</div>
+        </div>
+        <div class="attr-bar"><div class="attr-fill" style="width: ${pct}%"></div></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderRecord() {
+  const today = todayStr();
+
+  document.querySelectorAll('[data-record="dinner"]').forEach(b => {
+    b.classList.toggle('active', state.records.dinner[today] === b.dataset.val);
+  });
+  document.querySelectorAll('[data-record="period"]').forEach(b => {
+    b.classList.toggle('active', state.records.period[today] === b.dataset.val);
+  });
+
+  const history = document.getElementById('record-history');
+  const entries = [];
+  for (let i = 0; i < 30; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const dinner = state.records.dinner[ds];
+    const period = state.records.period[ds];
+    if (dinner || period) {
+      const tags = [];
+      if (dinner === 'no') tags.push('<span style="color:var(--celadon)">不食</span>');
+      if (dinner === 'yes') tags.push('<span style="color:var(--accent)">食</span>');
+      if (period === 'start') tags.push('<span style="color:var(--crimson)">来潮</span>');
+      if (period === 'ongoing') tags.push('<span style="color:var(--crimson)">行经</span>');
+      if (period === 'end') tags.push('<span style="color:var(--ink-soft)">经毕</span>');
+      entries.push(`
+        <div style="display:flex; justify-content:space-between; padding:8px 4px; border-bottom:1px solid var(--line-soft); font-size:13px;">
+          <span style="font-family:'Cormorant Garamond',serif; color:var(--ink-faint); letter-spacing:1px;">${ds}</span>
+          <span>${tags.join(' · ')}</span>
+        </div>
+      `);
+    }
+  }
+  history.innerHTML = entries.length ? entries.join('') : '<div class="empty-state">尚无记录</div>';
+}
+
+function renderJournal() {
+  const history = document.getElementById('journal-history');
+  if (!state.journal.length) {
+    history.innerHTML = '<div class="empty-state">尚未落笔</div>';
+    return;
+  }
+  history.innerHTML = state.journal.slice().reverse().map((entry, idx) => {
+    const realIdx = state.journal.length - 1 - idx;
+    return `
+      <div class="journal-entry">
+        <div class="journal-date">${entry.date}</div>
+        <div class="journal-text">${escapeHtml(entry.text)}</div>
+        <button onclick="deleteJournal(${realIdx})" style="background:none;border:none;color:var(--ink-faint);font-size:11px;margin-top:6px;cursor:pointer;letter-spacing:1px;">删除</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderLedger() {
+  const now = new Date();
+  const monthPrefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const monthEntries = state.ledger.filter(e => e.date.startsWith(monthPrefix));
+  const total = monthEntries.reduce((s, e) => s + Number(e.amount), 0);
+
+  document.getElementById('ledger-month').textContent = '¥' + total.toFixed(0);
+  document.getElementById('ledger-count').textContent = monthEntries.length;
+
+  const container = document.getElementById('ledger-entries');
+  if (!state.ledger.length) {
+    container.innerHTML = '<div class="empty-state">尚无记账</div>';
+    return;
+  }
+  container.innerHTML = state.ledger.slice().reverse().map((e, idx) => {
+    const realIdx = state.ledger.length - 1 - idx;
+    return `
+      <div class="ledger-entry">
+        <div class="ledger-entry-info">
+          <div class="ledger-entry-name">${escapeHtml(e.name)}</div>
+          <div class="ledger-entry-date">${e.date}</div>
+        </div>
+        <div class="ledger-entry-amount">¥${Number(e.amount).toFixed(0)}</div>
+        <button class="ledger-delete" onclick="deleteLedger(${realIdx})">×</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderShop() {
+  const container = document.getElementById('shop-items');
+  container.innerHTML = SHOP_ITEMS.map(item => `
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <div class="shop-item-name">${item.name}</div>
+        <div class="shop-item-desc">${item.desc}</div>
+      </div>
+      <div class="shop-item-cost">${item.cost}</div>
+      <button class="shop-redeem" data-item="${item.id}" ${state.points < item.cost ? 'disabled' : ''}>兑换</button>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.shop-redeem').forEach(b => {
+    b.addEventListener('click', () => redeem(b.dataset.item));
+  });
+
+  const history = document.getElementById('shop-history');
+  if (!state.redeemed.length) {
+    history.innerHTML = '<div class="empty-state">尚未兑换</div>';
+  } else {
+    history.innerHTML = state.redeemed.slice().reverse().slice(0, 20).map(r => `
+      <div style="display:flex;justify-content:space-between;padding:10px 4px;border-bottom:1px solid var(--line-soft);font-size:13px;">
+        <span>${r.name}</span>
+        <span style="font-family:'Cormorant Garamond',serif;color:var(--ink-faint);">${r.date}</span>
+      </div>
+    `).join('');
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============= 操作 =============
+
+function toggleTask(taskId, isWeekly) {
+  let task;
+  for (const g of TASK_GROUPS) {
+    task = g.tasks.find(t => t.id === taskId);
+    if (task) break;
+  }
+  if (!task) return;
+
+  const week = weekStr();
+  const isDone = isWeekly ? state.weeklyTasks[taskId] === week : state.todayTasks[taskId];
+
+  if (isDone) {
+    if (isWeekly) delete state.weeklyTasks[taskId];
+    else delete state.todayTasks[taskId];
+    state.points -= task.points;
+    if (!task.minus) state.totalEarned -= task.points;
+    task.attrs.forEach(a => { state.attrs[a] = Math.max(0, (state.attrs[a] || 0) - 2); });
+  } else {
+    if (isWeekly) state.weeklyTasks[taskId] = week;
+    else state.todayTasks[taskId] = true;
+    state.points += task.points;
+    if (!task.minus) state.totalEarned += task.points;
+    task.attrs.forEach(a => { state.attrs[a] = (state.attrs[a] || 0) + 2; });
+
+    const arr = task.minus ? ENCOURAGEMENTS_MINUS : ENCOURAGEMENTS_PLUS;
+    showToast(task.points, arr[Math.floor(Math.random() * arr.length)]);
+  }
+
+  state.lastActiveDate = todayStr();
+  saveState();
+  renderStats();
+  renderTasks();
+  renderAttrs();
+}
+
+function showToast(points, message) {
+  const wrap = document.getElementById('toast');
+  const ptsEl = document.getElementById('toast-points');
+  const msgEl = document.getElementById('toast-message');
+
+  ptsEl.textContent = (points > 0 ? '+' : '') + points;
+  ptsEl.classList.toggle('minus', points < 0);
+  msgEl.textContent = message;
+
+  wrap.classList.add('show');
+  setTimeout(() => wrap.classList.remove('show'), 2200);
+}
+
+function setRecord(type, val) {
+  const today = todayStr();
+  if (state.records[type][today] === val) {
+    delete state.records[type][today];
+  } else {
+    state.records[type][today] = val;
+  }
+  saveState();
+  renderRecord();
+}
+
+function saveJournal() {
+  const input = document.getElementById('journal-input');
+  const text = input.value.trim();
+  if (!text) return;
+  state.journal.push({ date: todayStr(), text, time: new Date().toISOString() });
+  input.value = '';
+  saveState();
+  renderJournal();
+  showToast(0, '收笔。');
+}
+
+function deleteJournal(idx) {
+  if (!confirm('删除这条日记？')) return;
+  state.journal.splice(idx, 1);
+  saveState();
+  renderJournal();
+}
+
+function addLedger() {
+  const name = document.getElementById('ledger-name').value.trim();
+  const amount = document.getElementById('ledger-amount').value;
+  if (!name || !amount) return;
+  state.ledger.push({ name, amount: Number(amount), date: todayStr() });
+  document.getElementById('ledger-name').value = '';
+  document.getElementById('ledger-amount').value = '';
+  saveState();
+  renderLedger();
+}
+
+function deleteLedger(idx) {
+  if (!confirm('删除这笔记账？')) return;
+  state.ledger.splice(idx, 1);
+  saveState();
+  renderLedger();
+}
+
+function redeem(itemId) {
+  const item = SHOP_ITEMS.find(i => i.id === itemId);
+  if (!item || state.points < item.cost) return;
+  if (!confirm(`兑换：${item.name}\n消耗 ${item.cost} 积分？`)) return;
+  state.points -= item.cost;
+  state.redeemed.push({ id: itemId, name: item.name, cost: item.cost, date: todayStr() });
+  saveState();
+  renderStats();
+  renderShop();
+  showToast(-item.cost, `已兑换：${item.name}\n享受它。`);
+}
+
+function exportData() {
+  const data = JSON.stringify(state, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `zhenyuan-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData() {
+  document.getElementById('file-input').click();
+}
+
+document.getElementById('file-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!confirm('确认读取存档？当前数据会被覆盖。')) return;
+      state = { ...defaultState, ...data };
+      saveState();
+      renderAll();
+      alert('已读取存档。');
+    } catch (err) {
+      alert('文件格式错误。');
+    }
+  };
+  reader.readAsText(file);
+});
+
+function resetAll() {
+  if (!confirm('确认归零？所有数据将被清空，此操作不可撤销。\n建议先导出存档。')) return;
+  if (!confirm('再次确认：真的归零？')) return;
+  state = { ...defaultState };
+  saveState();
+  renderAll();
+}
+
+function renderAll() {
+  checkDateChange();
+  renderHeader();
+  renderStats();
+  renderTasks();
+  renderAttrs();
+  renderRecord();
+  renderJournal();
+  renderLedger();
+  renderShop();
+}
+
+// ============= 初始化 =============
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('panel-' + item.dataset.panel).classList.add('active');
+  });
+});
+
+document.querySelectorAll('[data-record]').forEach(b => {
+  b.addEventListener('click', () => setRecord(b.dataset.record, b.dataset.val));
+});
+
+document.getElementById('journal-save').addEventListener('click', saveJournal);
+document.getElementById('ledger-add').addEventListener('click', addLedger);
+document.getElementById('export-btn').addEventListener('click', exportData);
+document.getElementById('import-btn').addEventListener('click', importData);
+document.getElementById('reset-btn').addEventListener('click', resetAll);
+
+renderAll();
+
+// 每分钟检查一次日期变化（跨日重置）
+setInterval(checkDateChange, 60000);
+
+// ============= 新增：吉祥物 SVG 注入 =============
+// 工程层后期接 Rive/Lottie 时，直接替换 #clawd 内容即可。
+(function bootMascot() {
+  const kind = document.documentElement.dataset.mascot || 'octopus';
+  const tpl = document.getElementById('mascot-' + kind + '-tpl');
+  const slot = document.getElementById('clawd');
+  if (tpl && slot) {
+    slot.innerHTML = '';
+    slot.appendChild(tpl.content.cloneNode(true));
+  }
+})();
+
+// Tauri 窗口拖动 fallback（transparent 窗口下 -webkit-app-region: drag 有时失效）
+(function () {
+  const dragBar = document.querySelector('.drag-bar');
+  if (!dragBar) return;
+  dragBar.addEventListener('mousedown', (e) => {
+    if (e.buttons !== 1) return;
+    const tauri = window.__TAURI__;
+    if (tauri && tauri.window && typeof tauri.window.getCurrentWindow === 'function') {
+      tauri.window.getCurrentWindow().startDragging();
+    } else if (tauri && tauri.core && typeof tauri.core.invoke === 'function') {
+      tauri.core.invoke('plugin:window|start_dragging').catch(() => {});
+    }
+  });
+})();
+</script>
+</body>
+</html>
+
+<style id="__om-edit-overrides">
+#tasks-container [data-task="zhuangzi_class"] .task-name { color: rgb(255, 255, 255) !important }
+#tasks-container [data-task="zhuangzi_class"] .task-name { color: rgb(240, 237, 224) !important }
+#tasks-container [data-task="zhuangzi_class"] .task-meta { color: rgb(200, 209, 185) !important }
+#tasks-container [data-task="zhuangzi_class"] .task-meta { color: rgb(168, 176, 156) !important }
+#ledger-entries >.empty-state { color: rgb(250, 229, 179) !important }
+#shop-items >div:nth-child(1) .shop-item-desc { color: rgb(233, 189, 200) !important }
+#shop-items >div:nth-child(1) .shop-item-desc { color: rgb(246, 198, 210) !important }
+#shop-items >div:nth-child(2) .shop-item-desc { color: rgb(246, 198, 210) !important }
+#shop-items >div:nth-child(3) .shop-item-desc { color: rgb(246, 198, 210) !important }
+#shop-items >div:nth-child(4) .shop-item-desc { color: rgb(246, 198, 210) !important }
+#shop-items >div:nth-child(4) .shop-item-desc { color: rgb(168, 136, 144) !important }
+#shop-items >div:nth-child(4) .shop-item-desc { color: rgb(246, 198, 210) !important }
+#shop-items >div:nth-child(5) .shop-item-desc { color: rgb(246, 198, 210) !important }
+#shop-items >div:nth-child(6) .shop-item-desc { color: rgb(246, 198, 210) !important }
+#shop-items >div:nth-child(7) .shop-item-desc { color: rgb(246, 198, 210) !important }
+</style>
