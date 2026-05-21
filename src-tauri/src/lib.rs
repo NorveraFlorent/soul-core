@@ -117,7 +117,7 @@ async fn cc_chat(
     Err(format!("claude exited with {}: {}", code, stderr.trim()))
 }
 
-// 返回 norvera CC 的 session 存储目录路径（让 UI 能告诉用户文件在哪）
+// 返回心舍 / Soul·Core CC 的 session 存储目录路径（让 UI 能告诉用户文件在哪）
 #[tauri::command]
 fn cc_session_dir(subdir: Option<String>) -> Result<String, String> {
     let sd = subdir.as_deref().unwrap_or("main");
