@@ -2782,7 +2782,7 @@ function exportData() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `zhenyuan-${todayStr()}.json`;
+  a.download = `soul-core-${todayStr()}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -3152,7 +3152,7 @@ zhiInit();
       '',
       '要求：',
       '- phase 最多 12 字（汉字算 1）',
-      '- words 2-4 个，每个 2-4 字（如"慢深"/"真名"/"不堆量"）',
+      '- words 2-4 个，每个 2-4 字（关键词风格，如"清晨"/"专注"/"不急"）',
       '- 调子柔、诗意、不堆量、符合用户气质',
       '- 不要解释、不要寒暄，只出 JSON'
     ].join('\n');
