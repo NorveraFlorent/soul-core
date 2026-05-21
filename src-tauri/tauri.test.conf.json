@@ -1,5 +1,5 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "norvera-test",
-  "identifier": "com.norvera.norvera.test"
+  "productName": "Soul-Core-test",
+  "identifier": "com.norvera.soulcore.test"
 }

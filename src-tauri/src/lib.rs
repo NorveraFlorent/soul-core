@@ -1,10 +1,10 @@
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
-// norvera 内 CC 对话 cwd
-// 默认 (main) -> ~/.norvera/cc/                    （主对话，panel-cc）
-// onboarding -> ~/.norvera/cc-onboarding/          （初遇引导，独立 session 不污染主）
-fn norvera_cc_cwd(subdir: &str) -> Result<std::path::PathBuf, String> {
+// 心舍 / Soul·Core 内 CC 对话 cwd
+// 默认 (main) -> ~/.soul-core/cc/                  （主对话，panel-cc）
+// onboarding -> ~/.soul-core/cc-onboarding/        （初遇引导，独立 session 不污染主）
+fn soul_core_cc_cwd(subdir: &str) -> Result<std::path::PathBuf, String> {
     // 白名单防注入 / 防误传
     let leaf = match subdir {
         "main" | "" => "cc",
@@ -12,7 +12,7 @@ fn norvera_cc_cwd(subdir: &str) -> Result<std::path::PathBuf, String> {
         _ => return Err(format!("invalid cc subdir: {}", subdir)),
     };
     let home = std::env::var("HOME").map_err(|e| format!("no HOME: {}", e))?;
-    let dir = std::path::PathBuf::from(home).join(".norvera").join(leaf);
+    let dir = std::path::PathBuf::from(home).join(".soul-core").join(leaf);
     std::fs::create_dir_all(&dir).map_err(|e| format!("mkdir: {}", e))?;
     Ok(dir)
 }
@@ -73,7 +73,7 @@ async fn cc_chat(
     subdir: Option<String>,
 ) -> Result<String, String> {
     let sd = subdir.as_deref().unwrap_or("main");
-    let cwd = norvera_cc_cwd(sd)?;
+    let cwd = soul_core_cc_cwd(sd)?;
     let sid = session_id.as_deref().filter(|s| is_uuid(s));
     let cont = continue_session.unwrap_or(false);
 
@@ -121,7 +121,7 @@ async fn cc_chat(
 #[tauri::command]
 fn cc_session_dir(subdir: Option<String>) -> Result<String, String> {
     let sd = subdir.as_deref().unwrap_or("main");
-    let cwd = norvera_cc_cwd(sd)?;
+    let cwd = soul_core_cc_cwd(sd)?;
     Ok(cwd.to_string_lossy().to_string())
 }
 

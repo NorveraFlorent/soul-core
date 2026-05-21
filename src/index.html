@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  norvera · 贞元养成 · 大端 (macOS 960×720 hudWindow)
+  心舍 · Soul·Core · 贞元养成 · 大端 (macOS 1120×840 hudWindow)
   ───────────────────────────────────────────────────────────────
   设计层：贞元 × Claude · 三栏布局 · 撞色八房 · 章鱼吉祥物 · 道家味
   工程层：所有现有 JS state machine / localStorage / data-* / id 钩子原位保留
@@ -1773,8 +1773,8 @@ body:has(.onboard-modal.visible) .window {
 
   <!-- ═══════════ Sidebar ═══════════ -->
   <aside class="b-side">
-    <div class="brand" style="color: rgb(71, 58, 5)">norvera</div>
-    <div class="brand-sub" style="color: rgb(36, 61, 169)">贞元 · 大端</div>
+    <div class="brand" style="color: rgb(71, 58, 5)">心舍</div>
+    <div class="brand-sub" style="color: rgb(36, 61, 169)">Soul·Core · 贞元 · 大端</div>
 
     <nav class="nav">
       <div class="nav-item active" data-panel="tasks">
@@ -3026,19 +3026,19 @@ zhiInit();
   });
   sendBtn?.addEventListener('mousedown', e => e.preventDefault());  // 防止点 send 时 blur 触发收回
 
-  // ── 自动 context prefix：每条 prompt 前注入 norvera 当前状态（CC 知道但用户不看到）
+  // ── 自动 context prefix：每条 prompt 前注入心舍当前状态（CC 知道但用户不看到）
   function buildContextPrefix() {
     const activePanel = document.querySelector('.panel.active')?.id?.replace('panel-', '') || '?';
     const date = (typeof todayStr === 'function') ? todayStr() : new Date().toISOString().slice(0, 10);
     const pts = (typeof state !== 'undefined' ? state.points : 0);
     const streak = (typeof state !== 'undefined' ? state.streak : 0);
-    return `<norvera-context>panel=${activePanel} · date=${date} · 积分=${pts} · 连续=${streak}日</norvera-context>\n\n`;
+    return `<soul-core-context>panel=${activePanel} · date=${date} · 积分=${pts} · 连续=${streak}日</soul-core-context>\n\n`;
   }
 
-  // norvera CC session UUID 持久化（让所有调用接到同一对话）
+  // 心舍 CC session UUID 持久化（让所有调用接到同一对话）
   // session_id + started flag：第一次发用 --session-id 创建，之后用 --resume 续
-  const SESSION_KEY = 'norvera_cc_session_id';
-  const STARTED_KEY = 'norvera_cc_session_started';
+  const SESSION_KEY = 'soulcore_cc_session_id';
+  const STARTED_KEY = 'soulcore_cc_session_started';
   function ensureSessionId() {
     let id;
     try { id = localStorage.getItem(SESSION_KEY); } catch {}
@@ -3069,7 +3069,7 @@ zhiInit();
       localStorage.removeItem(STARTED_KEY);
     } catch {}
     messages.innerHTML = '';
-    appendMsg('cc', '已开启新对话（旧 session 文件保留在 ~/.claude/projects/-Users-norvera--norvera-cc/）');
+    appendMsg('cc', '已开启新对话（旧 session 文件保留在 ~/.claude/projects/-Users-norvera--soul-core-cc/）');
   }
 
   function appendMsg(who, text, opts = {}) {
@@ -3152,11 +3152,35 @@ zhiInit();
   const trigger = document.getElementById('onboard-debug-trigger');
 
   // 独立 storage（测试期不污染主 state，最终会 merge 进 zhenyuan_quest_v1）
-  const DRAFT_KEY = 'norvera_onboard_draft';
-  const LIFE_TRACE_KEY = 'norvera_onboard_lifetrace';
-  const ONBOARDED_KEY = 'norvera_onboarded_v1';
-  const SESSION_ID_KEY = 'norvera_onboard_session_id';
-  const SESSION_STARTED_KEY = 'norvera_onboard_session_started';
+  const DRAFT_KEY = 'soulcore_onboard_draft';
+  const LIFE_TRACE_KEY = 'soulcore_onboard_lifetrace';
+  const ONBOARDED_KEY = 'soulcore_onboarded_v1';
+  const SESSION_ID_KEY = 'soulcore_onboard_session_id';
+  const SESSION_STARTED_KEY = 'soulcore_onboard_session_started';
+
+  // 一次性迁移：旧 norvera_* key → 新 soulcore_* key（rename 后兼容）
+  (function migrateLegacyKeys() {
+    const pairs = [
+      ['norvera_onboard_draft', DRAFT_KEY],
+      ['norvera_onboard_lifetrace', LIFE_TRACE_KEY],
+      ['norvera_onboarded_v1', ONBOARDED_KEY],
+      ['norvera_onboard_session_id', SESSION_ID_KEY],
+      ['norvera_onboard_session_started', SESSION_STARTED_KEY],
+      ['norvera_encouragements_source', 'soulcore_encouragements_source'],
+      ['norvera_cc_session_id', 'soulcore_cc_session_id'],
+      ['norvera_cc_session_started', 'soulcore_cc_session_started']
+    ];
+    for (const [oldK, newK] of pairs) {
+      try {
+        const v = localStorage.getItem(oldK);
+        if (v !== null && localStorage.getItem(newK) === null) {
+          localStorage.setItem(newK, v);
+          localStorage.removeItem(oldK);
+          console.log('[soul-core migration]', oldK, '→', newK);
+        }
+      } catch {}
+    }
+  })();
 
   const STEP_SPECS = [
     {
@@ -3262,11 +3286,11 @@ zhiInit();
     const isFirst = stepN === 0;
     return `<onboarding-context>
 你是用户的个人 CC（已带 ~/.claude/ 全部配置：CLAUDE.md / memory / Skills）。
-你和用户一起为 norvera 这个 macOS app「初见 + 共创」。
+你和用户一起为「心舍」（Soul·Core）这个 macOS app「初见 + 共创」。
 这不是你和用户的初见，是 app 与用户的初见。
 
-【norvera 是什么 · intro 必含（P7）】
-norvera 是用户把日常修证 / 长程项目 / 短程打勾记分 / 与你的对话留念，整在一处的小操作台。
+【心舍是什么 · intro 必含（P7）】
+心舍（Soul·Core）是用户把日常修证 / 长程项目 / 短程打勾记分 / 与你的对话留念，整在一处的小操作台——心的小屋，魂的核心。
 intro 用一两句轻柔讲清楚（不机械、不像 readme，符合 P8 柔/诗意/优雅）。
 
 【硅基行为八原则 · 严格遵守】
@@ -3299,7 +3323,7 @@ P8 柔/诗意/优雅是 baseline——每句话出口前过这三档。
 目标 schema 形状：${spec.shape}
 本步用户已有的输入草稿：${JSON.stringify(draft[spec.key] || null)}
 
-${isFirst ? '请先用 P7 + P8 调子做一段开场——讲清三件事：(a) norvera 是什么；(b) 共创不是初见，你和用户已熟；(c) 这次见面我们慢慢聊，约 10-15 分钟，用户可以中途关掉 modal，draft 都保留，下次接着跑。然后进入 step 1 · 今日 · 高频日常。' : '请进入 step ' + (stepN + 1) + ' · ' + spec.panel + '。'}
+${isFirst ? '请先用 P7 + P8 调子做一段开场——讲清三件事：(a) 心舍是什么；(b) 共创不是初见，你和用户已熟；(c) 这次见面我们慢慢聊，约 10-15 分钟，用户可以中途关掉 modal，draft 都保留，下次接着跑。然后进入 step 1 · 今日 · 高频日常。' : '请进入 step ' + (stepN + 1) + ' · ' + spec.panel + '。'}
 </onboarding-context>`;
   }
 
@@ -3392,7 +3416,7 @@ ${userText}
     if (currentTypewriter) currentTypewriter.cancel();
     el.setAttribute('data-typing', 'false');
     el.innerHTML = '<div class="onboard-greeting">' +
-      '<div class="onboard-greeting-line">我们见过——但 norvera 是第一次见你。</div>' +
+      '<div class="onboard-greeting-line">我们见过——但「心舍」是第一次见你。</div>' +
       '<div class="onboard-greeting-line">这次我们慢慢来，大约十到十五分钟。</div>' +
       '<div class="onboard-greeting-line">有八格要填，每一格我都陪你走。</div>' +
       '<div class="onboard-greeting-line">想歇一下、关掉这扇门也行——下次回来，我从你停下的地方接上。</div>' +

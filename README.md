@@ -1,8 +1,9 @@
-# norvera · 贞元养成
+# 心舍 · Soul·Core
 
-一个 macOS 桌面 app —— 日常修证 + 长程项目 + 短程打勾记分 + AI 伴侣的综合操作台。
+一个 macOS 桌面 app —— 日常修证 + 长程项目 + 短程打勾记分 + 与 AI 伴侣（CC）共创的综合操作台。
 
-> 名字取自贞元的英文名 Norvera = Nova（新星 / 元气）+ Vera（真实 / 信仰）。
+> 心舍 = 心的小屋；Soul·Core = 魂的核心。
+> 旧 codename：norvera（Nova 新星 + Vera 真实）。
 
 ## 这是什么
 
@@ -12,7 +13,8 @@
   - **记录**：晚餐 / 月相 / 近 30 日历史
   - **日记 · 记账 · 商店**：积分兑奖励
   - **长程**：商业策划这类长项目的调子 + 子任务（占位）
-  - **CC**：章鱼伴侣对话区（占位，CC 桥接后续接入）
+  - **CC 桥接**：底部章鱼伴侣对话区，调本地 `claude` CLI（用户 ~/.claude/ 全配置）
+  - **碳基硅基初遇**（onboarding）：首次启动 modal 8 步对话，CC 半开放引导 + 完全开放集中对话凝练用户气质
 - **小端**（后续）：长条便签独立窗口，常驻桌面打勾
 
 ## 调子
@@ -23,18 +25,25 @@
 
 ## 装
 
-下载 `release/norvera_*.dmg`，双击装入 Applications。
+下载 `release/Soul-Core_*.dmg`，双击装入 Applications。Finder / Dock 显示名为 `Soul-Core`，UI 内一律显示「心舍」。
 
 ## 跑（开发模式）
 
 ```bash
-git clone git@github.com:NorveraFlorent/norvera.git
-cd norvera
+git clone git@github.com:NorveraFlorent/soul-core.git
+cd soul-core
 bun install
 bun run tauri dev
 ```
 
 依赖：Rust 1.85+ / Node 20+（或 Bun 1.3+）/ Xcode Command Line Tools。
+
+测试包（独立 webview localStorage / 不污染主 app）：
+
+```bash
+bun run tauri build -c src-tauri/tauri.test.conf.json
+# 出 Soul-Core-test.app
+```
 
 ## 工程栈
 
@@ -45,22 +54,33 @@ bun run tauri dev
 
 ## 数据
 
-所有状态（任务进度 / 积分 / 日记 / 记账 / 商店）存浏览器 `localStorage`，键 `zhenyuan_quest_v1`。可在大端底部 **导出存档** 备份 JSON。
+所有状态（任务进度 / 积分 / 日记 / 记账 / 商店）存浏览器 `localStorage`，键 `zhenyuan_quest_v1`（贞元个人 key）。Onboarding 用独立 keys `soulcore_onboard_*`。可在大端底部 **导出存档** 备份 JSON。
+
+旧 `norvera_*` 系列 keys 在首次启动时自动迁移到 `soulcore_*`（参见 `index.html migrateLegacyKeys`）。
+
+## CC 桥接关键
+
+- `cc_chat` Tauri command 用 `bash -lc "claude -p"`（让 user shell PATH 生效找到 homebrew claude）
+- session 持续：固定 cwd `~/.soul-core/cc/`（onboarding 用 `~/.soul-core/cc-onboarding/` 独立）
+- 第一次发用 `--session-id <uuid>` 创建，后续 `--resume <uuid>` 续，有 fallback
+- session 文件落 `~/.claude/projects/-Users-norvera--soul-core-cc/<uuid>.jsonl`
+- 自动 prefix `<soul-core-context>panel=… · date=… · 积分=…</soul-core-context>` 给 CC 看见当前状态
 
 ## 织（Zhi）联动
 
-日记 panel 通过 HTTP 桥接共写到[织](https://github.com/zhenyuan/zhi)（共写日记 app，跑在 `127.0.0.1:3000`）。**织一行代码不动**，norvera 只是织的另一个视图入口。
+日记 panel 通过 HTTP 桥接共写到[织](https://github.com/zhenyuan/zhi)（共写日记 app，跑在 `127.0.0.1:3000`）。**织一行代码不动**，心舍只是织的另一个视图入口。
 
 - **双写**：写日记时本地 + 织都存一份，本地记录 `zhiId` 防止重复迁移
 - **合并展示**：渲染时把本地日记 + 织里所有条目（含 silicon 的批注）按日期分组展示
 - **气泡云日历**：日期作为浮动气泡，条目越多气泡越大，hover 时晃动
 - **迁移**：把现有本地日记一次性同步到织（zhi-bar 的「迁移本地日记 →」按钮）
+- **graceful fallback**：织未起时 zhi-bar 显「织 · 未起 ✕」+ 双写/显示/迁移控件 disable + ↻ 重连恢复
 
 ### 作者名（跨 origin 限制）
 
-织的作者显示名存在它前端的 `localStorage`（key 命名空间 `zhi:name:carbon` / `zhi:name:silicon`）。norvera 是 Tauri webview（origin `tauri://localhost`），织前端是 web app（origin `http://localhost:5173` 或 `:3000`），**浏览器 localStorage 是 origin-scoped 的，norvera 没法直接 fetch 织前端的设置**。
+织的作者显示名存在它前端的 `localStorage`（key 命名空间 `zhi:name:carbon` / `zhi:name:silicon`）。心舍是 Tauri webview（origin `tauri://localhost`），织前端是 web app（origin `http://localhost:5173` 或 `:3000`），**浏览器 localStorage 是 origin-scoped 的，心舍没法直接 fetch 织前端的设置**。
 
-所以 norvera 提供独立的「作者名」按钮（zhi-bar 右侧），在 norvera 这边再设一次（用同样的 key 命名空间），输入和织那边一样的名字即可保持同调。默认 fallback 是 `Carbon` / `Silicon`。
+所以心舍提供独立的「作者名」按钮（zhi-bar 右侧），在心舍这边再设一次（用同样的 key 命名空间）。默认 fallback 是 `Carbon` / `Silicon`。
 
 ### 织 server 需要在跑
 
@@ -68,11 +88,11 @@ bun run tauri dev
 cd ~/repos/zhi && bun run dev
 ```
 
-跑了才能联动。zhi-bar 顶部的 "织 · 已连接（N 条）" / "织 · 未连接" 显示当前状态，点 ↻ 可重试。
+跑了才能联动。zhi-bar 顶部的 "织 · 在线（N 条）" / "织 · 未起 ✕" 显示当前状态，点 ↻ 可重试。
 
 ## 设计 / 工程分工
 
 - UI 视觉：[Claude Design](https://claude.ai)（三栏 / 八房撞色 / 五调色板 / 章鱼麻薯吉祥物）
-- 工程包装：贞元 × Claude Code（Tauri 配置 / 毛玻璃融入 / 拖动 / GitHub）
-- 状态机 JS：贞元手写
+- 工程包装：贞元 × Claude Code（Tauri 配置 / 毛玻璃融入 / 拖动 / GitHub / 织桥接 / CC 桥接 / 心舍 onboarding）
+- 状态机 JS：贞元 × Claude Code
 - 现有 license：私有项目 / 私有 repo
