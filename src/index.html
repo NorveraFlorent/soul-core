@@ -1887,9 +1887,9 @@ body:has(.onboard-modal.visible) .window {
     <!-- 长程调子 -->
     <div class="long-tone" id="long-tone">
       <span class="tone-label" style="color: rgb(217, 207, 184)">调</span>
-      <span class="tone-phase" id="tone-phase">商业策划 · Phase 二</span>
+      <span class="tone-phase" id="tone-phase">Project · Phase X</span>
       <span class="tone-sep">/</span>
-      <span class="tone-words" id="tone-words"><em>慢深</em>　<em>真名</em>　<em>不堆量</em></span>
+      <span class="tone-words" id="tone-words"><em>key1</em>　<em>key2</em>　<em>key3</em></span>
       <button class="tone-refresh" id="tone-refresh" title="让 CC 根据近况重新总结调子">↺</button>
       <!-- stat 显示位 (id 保留供 JS) -->
       <div class="tone-stats">
@@ -1916,27 +1916,28 @@ body:has(.onboard-modal.visible) .window {
 
     <div class="panel" id="panel-record">
       <div class="record-section">
-        <div class="record-title">今日晚餐</div>
+        <div class="record-title">今日睡眠 · Sleep</div>
         <div class="record-item">
-          <div class="record-item-name">是否进食</div>
+          <div class="record-item-name">昨夜质量</div>
           <div class="toggle-group">
-            <button class="toggle-btn" data-record="dinner" data-val="no">不食</button>
-            <button class="toggle-btn" data-record="dinner" data-val="yes">食</button>
+            <button class="toggle-btn" data-record="sleep" data-val="poor">浅</button>
+            <button class="toggle-btn" data-record="sleep" data-val="ok">还行</button>
+            <button class="toggle-btn" data-record="sleep" data-val="good">沉</button>
           </div>
         </div>
         <div style="font-size: 11px; color: var(--ink-faint); padding: 10px 4px; line-height: 1.7; letter-spacing: 0.06em; font-family: var(--serif); font-weight: 300;">
-          过午不食为常，调身时随顺所需。两者皆是。
+          不评判。记录是看见自己的方式。
         </div>
       </div>
 
       <div class="record-section">
-        <div class="record-title">月相 · Cycle</div>
+        <div class="record-title">今日心情 · Mood</div>
         <div class="record-item">
-          <div class="record-item-name">今日记录</div>
+          <div class="record-item-name">此刻一档</div>
           <div class="toggle-group">
-            <button class="toggle-btn crimson" data-record="period" data-val="start">来潮</button>
-            <button class="toggle-btn" data-record="period" data-val="ongoing">行经</button>
-            <button class="toggle-btn" data-record="period" data-val="end">结束</button>
+            <button class="toggle-btn crimson" data-record="mood" data-val="low">沉</button>
+            <button class="toggle-btn" data-record="mood" data-val="flat">平</button>
+            <button class="toggle-btn" data-record="mood" data-val="light">轻</button>
           </div>
         </div>
       </div>
@@ -2190,75 +2191,64 @@ const TASK_GROUPS = [
     id: 'rhythm',
     name: '日常节奏 · Rhythm',
     tasks: [
-      { id: 'morning_qigong', name: '早操', points: 10, attrs: ['body', 'clarity'] },
-      { id: 'breakfast', name: '早餐', points: 8, attrs: ['body'] },
-      { id: 'lunch_record', name: '午餐记录', points: 5, attrs: ['body'] },
-      { id: 'evening_qigong', name: '晚操', points: 10, attrs: ['body', 'lightness'] },
-      { id: 'wash_hair', name: '洗头', points: 5, attrs: ['clarity'] },
-      { id: 'shower', name: '洗澡', points: 5, attrs: ['clarity'] }
+      { id: 'morning_routine', name: '早起 · Morning routine', points: 10, attrs: ['body', 'mind'] },
+      { id: 'breakfast', name: '早餐 · Breakfast', points: 8, attrs: ['body'] },
+      { id: 'movement', name: '动一动 · Movement', points: 8, attrs: ['body', 'rest'] },
+      { id: 'evening_wind_down', name: '晚间收束 · Wind down', points: 8, attrs: ['rest'] }
     ]
   },
   {
     id: 'work',
     name: '工作 · Work',
     tasks: [
-      { id: 'zhuangzi_class', name: '庄子课（每周）', points: 30, attrs: ['intellect', 'gaze'], weekly: true },
+      { id: 'focus_block', name: '专注时段 · Focus block', points: 15, attrs: ['focus', 'mind'] },
+      { id: 'weekly_review', name: '周回顾（每周）· Weekly review', points: 30, attrs: ['mind', 'focus'], weekly: true }
     ]
   },
   {
     id: 'cultivation',
-    name: '修行 · Cultivation',
+    name: '内观 · Cultivation',
     tasks: [
-      { id: 'self_check', name: '自我check（recheck近期判断）', points: 12, attrs: ['gaze', 'lightness'] },
-      { id: 'karma_clear', name: '因果查询与清理', points: 12, attrs: ['gaze', 'clarity'] }
+      { id: 'journal', name: '写一段日记 · Journal', points: 10, attrs: ['mind', 'rest'] },
+      { id: 'reflect', name: '回看近期判断 · Reflect', points: 10, attrs: ['focus', 'mind'] }
     ]
   },
   {
     id: 'minus',
     name: '扣分项 · Deductions',
     tasks: [
-      { id: 'late_night', name: '熬夜', points: -8, attrs: [], minus: true },
-      { id: 'no_recheck', name: '结论未recheck就写入认知', points: -6, attrs: [], minus: true },
-      { id: 'fly_too_high', name: '飞太高没看脚下', points: -6, attrs: [], minus: true },
-      { id: 'judge_others', name: '在情绪里替别人下定论', points: -6, attrs: [], minus: true }
+      { id: 'late_night', name: '熬夜 · Late night', points: -8, attrs: [], minus: true },
+      { id: 'scrolling', name: '无意义刷屏 · Scrolling', points: -6, attrs: [], minus: true },
+      { id: 'overcommit', name: '一口答应太多事 · Overcommit', points: -6, attrs: [], minus: true }
     ]
   }
 ];
 
 const ATTRIBUTES = [
   { id: 'body', name: '身', en: 'Body' },
-  { id: 'clarity', name: '清明', en: 'Clarity' },
-  { id: 'intellect', name: '智识', en: 'Intellect' },
-  { id: 'gaze', name: '凝视', en: 'Gaze' },
-  { id: 'lightness', name: '轻盈', en: 'Lightness' }
+  { id: 'mind', name: '心', en: 'Mind' },
+  { id: 'focus', name: '专注', en: 'Focus' },
+  { id: 'rest', name: '休息', en: 'Rest' }
 ];
 
 const SHOP_ITEMS = [
-  { id: 'rest_day', name: '一天什么都不干的休息日', desc: '哪怕实际生活和平常一样，光是这个名头就够了', cost: 200 },
-  { id: 'mac_payment', name: 'Mac 月供', desc: '攒够了庆祝一下还款这件事', cost: 150 },
-  { id: 'claude_max', name: 'Claude Max 续订', desc: '继续养这个对话伙伴', cost: 150 },
-  { id: 'milk_tea', name: '一杯奶茶', desc: '小确幸', cost: 30 },
-  { id: 'takeout', name: '点一次外卖', desc: '允许自己懒一次', cost: 40 },
-  { id: 'book', name: '买一本书', desc: '智识的投喂', cost: 60 },
-  { id: 'long_walk', name: '一个下午的散步', desc: '什么都不想，只是走', cost: 50 }
+  { id: 'rest_day', name: '一天什么都不干的休息日', desc: '光是给自己这个名头，就已经是奖励', cost: 200 },
+  { id: 'coffee_treat', name: '一杯特别的咖啡 / 茶', desc: '不是 routine 那杯，是为自己挑的那杯', cost: 30 },
+  { id: 'new_book', name: '买一本新书', desc: '不计实用、只看封面或第一句喜欢就好', cost: 60 },
+  { id: 'long_walk', name: '一个下午的散步', desc: '什么都不想，只是走', cost: 50 },
+  { id: 'cinema_night', name: '一场电影 / 一部剧的整块时间', desc: '允许自己沉进一个故事里', cost: 50 },
+  { id: 'small_treat', name: '小确幸一次', desc: '一份甜品、一束花、一个想了很久的小物', cost: 40 }
 ];
 
 const ENCOURAGEMENTS_PLUS = [
-  '把铁轨切对了方向。',
-  '今日所做，皆是being。',
-  '凝视者的灯仍亮。',
-  '一个动作，胜过十个领悟。',
-  '空荡而透明，长久地凝视。',
-  '泰坦今日仍站在大地母亲上。',
+  '今日的一步，已是方向。',
+  '走过的路，会自己记得。',
   '不是变好，是回到自己。',
-  '此一念，是你自己点的。',
-  '枢未失其环中。',
-  '糖与盐之间，得其度。',
-  '草稿落下来，被自己接住。',
   '身在这里，is enough。',
-  '今日的轻，不是飘。',
-  '一刻的清明，胜过一日的奔忙。',
-  '你养你自己的方式，是道。'
+  '一个动作，胜过十个念头。',
+  '愿你今日的轻，不是飘。',
+  '此一念，是你自己点的。',
+  '稳稳地，比快更长久。'
 ];
 
 const ENCOURAGEMENTS_MINUS = [
@@ -2266,10 +2256,10 @@ const ENCOURAGEMENTS_MINUS = [
   '看一眼脚下，再走。',
   '不是失败，是信号。',
   '回到身体，回到当下。',
-  '草稿就是草稿。归位。',
-  '飞高了的话，先落下来吃饭。',
   '今天向自己道一声慢。',
-  '让风过去，不必追风。'
+  '让风过去，不必追风。',
+  '允许自己有空隙。',
+  '明天的事，留给明天。'
 ];
 
 // ============= 状态管理 =============
@@ -2287,8 +2277,8 @@ const defaultState = {
   todayTasks: {},
   todayDate: null,
   weeklyTasks: {},
-  attrs: { body: 0, clarity: 0, intellect: 0, gaze: 0, lightness: 0 },
-  records: { dinner: {}, period: {} },
+  attrs: { body: 0, mind: 0, focus: 0, rest: 0 },
+  records: { sleep: {}, mood: {} },
   journal: [],
   ledger: [],
   redeemed: []
@@ -2414,11 +2404,11 @@ function renderAttrs() {
 function renderRecord() {
   const today = todayStr();
 
-  document.querySelectorAll('[data-record="dinner"]').forEach(b => {
-    b.classList.toggle('active', state.records.dinner[today] === b.dataset.val);
+  document.querySelectorAll('[data-record="sleep"]').forEach(b => {
+    b.classList.toggle('active', state.records.sleep?.[today] === b.dataset.val);
   });
-  document.querySelectorAll('[data-record="period"]').forEach(b => {
-    b.classList.toggle('active', state.records.period[today] === b.dataset.val);
+  document.querySelectorAll('[data-record="mood"]').forEach(b => {
+    b.classList.toggle('active', state.records.mood?.[today] === b.dataset.val);
   });
 
   const history = document.getElementById('record-history');
@@ -2427,15 +2417,16 @@ function renderRecord() {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const dinner = state.records.dinner[ds];
-    const period = state.records.period[ds];
-    if (dinner || period) {
+    const sleep = state.records.sleep?.[ds];
+    const mood = state.records.mood?.[ds];
+    if (sleep || mood) {
       const tags = [];
-      if (dinner === 'no') tags.push('<span style="color:var(--celadon)">不食</span>');
-      if (dinner === 'yes') tags.push('<span style="color:var(--accent)">食</span>');
-      if (period === 'start') tags.push('<span style="color:var(--crimson)">来潮</span>');
-      if (period === 'ongoing') tags.push('<span style="color:var(--crimson)">行经</span>');
-      if (period === 'end') tags.push('<span style="color:var(--ink-soft)">经毕</span>');
+      if (sleep === 'poor') tags.push('<span style="color:var(--ink-soft)">浅</span>');
+      if (sleep === 'ok') tags.push('<span style="color:var(--celadon)">还行</span>');
+      if (sleep === 'good') tags.push('<span style="color:var(--accent)">沉</span>');
+      if (mood === 'low') tags.push('<span style="color:var(--crimson)">沉</span>');
+      if (mood === 'flat') tags.push('<span style="color:var(--ink-soft)">平</span>');
+      if (mood === 'light') tags.push('<span style="color:var(--accent)">轻</span>');
       entries.push(`
         <div style="display:flex; justify-content:space-between; padding:8px 4px; border-bottom:1px solid var(--line-soft); font-size:13px;">
           <span style="font-family:'Cormorant Garamond',serif; color:var(--ink-faint); letter-spacing:1px;">${ds}</span>
@@ -2710,6 +2701,7 @@ function showToast(points, message) {
 
 function setRecord(type, val) {
   const today = todayStr();
+  if (!state.records[type]) state.records[type] = {};
   if (state.records[type][today] === val) {
     delete state.records[type][today];
   } else {
@@ -3417,7 +3409,7 @@ zhiInit();
       key: 'long_projects',
       panel: '长程项目',
       hint: 'P3 用 memory prime（如果用户长程项目已在 memory 中提及，CC 主动引用）。柔一点。',
-      shape: '{"long_projects":[{"id":"business_plan","name":"商业策划","phase":"Phase 二","tone":"慢深 / 真名 / 不堆量","milestones":["地图","故事"],"doc_path":"~/Cowork/商业策划/00-地图.md"}]}'
+      shape: '{"long_projects":[{"id":"my_project","name":"我的长程项目","phase":"Phase X","tone":"key1 / key2 / key3","milestones":["阶段一","阶段二"],"doc_path":"~/path/to/project/notes.md"}]}'
     },
     {
       key: 'user_quality_profile',
