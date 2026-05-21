@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <!--
-  心舍 · Soul·Core · 贞元养成 · 大端 (macOS 1120×840 hudWindow)
+  心舍 · Soul·Core · 大端 (macOS 1120×840 hudWindow)
   ───────────────────────────────────────────────────────────────
-  设计层：贞元 × Claude · 三栏布局 · 撞色八房 · 章鱼吉祥物 · 道家味
+  设计层：Project author × Claude · 三栏布局 · 撞色八房 · 章鱼吉祥物 · 道家味
   工程层：所有现有 JS state machine / localStorage / data-* / id 钩子原位保留
 
   data-palette  (on <html>): xuan-jin · qing-ci · zhu-xuan · yue-bai · chun-xin
@@ -12,7 +12,7 @@
 <html lang="zh-CN" data-palette="xuan-jin" data-mascot="octopus">
 <head>
 <meta charset="UTF-8">
-<title>贞元养成 · Norvera</title>
+<title>心舍 · Soul·Core</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Noto+Serif+SC:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
@@ -3255,7 +3255,7 @@ zhiInit();
       localStorage.removeItem(STARTED_KEY);
     } catch {}
     messages.innerHTML = '';
-    appendMsg('cc', '已开启新对话（旧 session 文件保留在 ~/.claude/projects/-Users-norvera--soul-core-cc/）');
+    appendMsg('cc', '已开启新对话（旧 session 文件保留在 ~/.claude/projects/-Users-<USER>--soul-core-cc/）');
   }
 
   function appendMsg(who, text, opts = {}) {
