@@ -351,18 +351,23 @@ body::before {
 .brand {
   font-family: var(--serif-en);
   font-weight: 400;
-  font-size: 20px;
-  letter-spacing: 0.08em;
+  font-size: 32px;
+  letter-spacing: 0;
   color: #2a2820;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: baseline;
+  /* width 由 JS 设置为 Soul·Core 宽度 → justify-content 让"心 舍"两端对齐 */
+  justify-content: space-between;
 }
 .brand-sub {
   font-family: var(--mono);
   font-size: 9px;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.18em;
   color: color-mix(in srgb, #2a2820 55%, transparent);
   text-transform: uppercase;
   margin-bottom: 36px;
+  line-height: 1.35;
 }
 
 .nav {
@@ -381,7 +386,7 @@ body::before {
   font-family: var(--serif);
   font-size: 15px;
   font-weight: 300;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   cursor: pointer;
   position: relative;
   transition: background 0.18s, color 0.18s;
@@ -488,6 +493,34 @@ body::before {
   font-size: 12px;
   color: var(--ink-soft);
   letter-spacing: 0.1em;
+}
+.long-tone .tone-refresh {
+  background: transparent;
+  border: 1px solid rgba(42, 40, 32, 0.18);
+  color: rgba(42, 40, 32, 0.55);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 12px;
+  margin-left: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 300ms ease;
+  font-family: var(--serif-en);
+  line-height: 1;
+}
+.long-tone .tone-refresh:hover {
+  border-color: rgba(42, 40, 32, 0.5);
+  color: rgba(42, 40, 32, 0.9);
+}
+.long-tone .tone-refresh.busy {
+  animation: tone-refresh-pulse 1200ms ease-in-out infinite;
+}
+@keyframes tone-refresh-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1.08); }
 }
 .long-tone .tone-stats b {
   color: var(--ink);
@@ -1773,8 +1806,8 @@ body:has(.onboard-modal.visible) .window {
 
   <!-- ═══════════ Sidebar ═══════════ -->
   <aside class="b-side">
-    <div class="brand" style="color: rgb(71, 58, 5)">心舍</div>
-    <div class="brand-sub" style="color: rgb(36, 61, 169)">Soul·Core · 贞元 · 大端</div>
+    <div class="brand" style="color: rgb(71, 58, 5)"><span>心</span><span>舍</span></div>
+    <div class="brand-sub" style="color: rgb(36, 61, 169)"><span id="brand-sub-soul">Soul·Core</span></div>
 
     <nav class="nav">
       <div class="nav-item active" data-panel="tasks">
@@ -1854,9 +1887,10 @@ body:has(.onboard-modal.visible) .window {
     <!-- 长程调子 -->
     <div class="long-tone" id="long-tone">
       <span class="tone-label" style="color: rgb(217, 207, 184)">调</span>
-      <span class="tone-phase">商业策划 · Phase 二</span>
+      <span class="tone-phase" id="tone-phase">商业策划 · Phase 二</span>
       <span class="tone-sep">/</span>
-      <span class="tone-words"><em>慢深</em>　<em>真名</em>　<em>不堆量</em></span>
+      <span class="tone-words" id="tone-words"><em>慢深</em>　<em>真名</em>　<em>不堆量</em></span>
+      <button class="tone-refresh" id="tone-refresh" title="让 CC 根据近况重新总结调子">↺</button>
       <!-- stat 显示位 (id 保留供 JS) -->
       <div class="tone-stats">
         <span><b id="stat-points">0</b>&nbsp;分</span>
@@ -3003,6 +3037,166 @@ document.getElementById('zhi-names')?.addEventListener('click', zhiSetNames);
 document.getElementById('zhi-jump-date')?.addEventListener('change', (e) => zhiJumpToDate(e.target.value));
 
 zhiInit();
+
+// brand UI · 用 user name 填充 (zhi:name:carbon) + 测量 Soul·Core 宽度让"心 舍"两字对齐
+(function initBrand() {
+  // brand-sub 已简化只剩 Soul·Core，无需 user name 填充或换行判断
+  const soul = document.getElementById('brand-sub-soul');
+  const brand = document.querySelector('.brand');
+  if (!soul || !brand) return;
+  // 等字体 ready 再测量（避免 fallback font 误差）
+  function applyWidth() {
+    const w = soul.getBoundingClientRect().width;
+    if (w > 0) brand.style.width = w + 'px';
+  }
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(applyWidth);
+  } else {
+    requestAnimationFrame(applyWidth);
+  }
+})();
+
+// 长程调子（long-tone）· 让 CC 根据当前用户状态总结，写入 state.long_tone
+(function initLongTone() {
+  const phaseEl = document.getElementById('tone-phase');
+  const wordsEl = document.getElementById('tone-words');
+  const refreshBtn = document.getElementById('tone-refresh');
+  if (!phaseEl || !wordsEl || !refreshBtn) return;
+
+  const STATE_KEY = 'zhenyuan_quest_v1';
+  const MAIN_SESSION_KEY = 'soulcore_cc_session_id';
+  const MAIN_STARTED_KEY = 'soulcore_cc_session_started';
+  const DEFAULT_ICON = '↺';
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(STATE_KEY) || '{}'); } catch { return {}; }
+  }
+  function saveLongTone(lt) {
+    try {
+      const s = loadState();
+      lt.last_updated = new Date().toISOString();
+      s.long_tone = lt;
+      localStorage.setItem(STATE_KEY, JSON.stringify(s));
+    } catch {}
+  }
+  function staleness(lt) {
+    if (!lt || !lt.last_updated) return null;
+    const diffMs = Date.now() - new Date(lt.last_updated).getTime();
+    return Math.max(0, Math.floor(diffMs / 86400000));  // 天数
+  }
+  function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; });
+  }
+  function renderTone(lt) {
+    if (!lt) return;
+    if (lt.phase) phaseEl.textContent = lt.phase;
+    if (Array.isArray(lt.words) && lt.words.length) {
+      wordsEl.innerHTML = lt.words.map(function(w){ return '<em>' + escHtml(w) + '</em>'; }).join('　');
+    }
+  }
+  function resetBtn(msg, ms) {
+    refreshBtn.textContent = msg;
+    if (msg !== DEFAULT_ICON) {
+      setTimeout(function(){
+        refreshBtn.textContent = DEFAULT_ICON;
+        refreshBtn.classList.remove('busy');
+        refreshBtn.title = '让 CC 根据近况重新总结调子';
+      }, ms || 2200);
+    }
+  }
+  function uuid() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+      var r = Math.random()*16|0, v = c==='x'?r:(r&0x3)|0x8;
+      return v.toString(16);
+    });
+  }
+
+  // 启动时加载持久化的 long_tone（如果有）
+  var s0 = loadState();
+  if (s0.long_tone) {
+    renderTone(s0.long_tone);
+    // hover tooltip 显示上次更新天数
+    const days = staleness(s0.long_tone);
+    if (days !== null) {
+      refreshBtn.title = '上次 CC 总结 ' + (days === 0 ? '今天' : days + ' 天前') + ' · 点击重新总结';
+    }
+    // hook：超过 3 天自动后台触发（fire-and-forget，5s 延迟让启动其他逻辑先完成）
+    if (days !== null && days >= 3) {
+      console.log('[long-tone] stale ' + days + ' days, auto-refreshing in 5s...');
+      setTimeout(function(){
+        if (!refreshBtn.classList.contains('busy')) refreshBtn.click();
+      }, 5000);
+    }
+  }
+
+  refreshBtn.addEventListener('click', async function(){
+    if (refreshBtn.classList.contains('busy')) return;
+    refreshBtn.classList.add('busy');
+    refreshBtn.textContent = '⋯';
+
+    var tauri = window.__TAURI__;
+    var invoke = tauri && ((tauri.core && tauri.core.invoke) || tauri.invoke);
+    if (!invoke) { refreshBtn.title = 'Tauri invoke 未就绪'; resetBtn('✕'); return; }
+
+    var st = loadState();
+    var onboardDraft = {};
+    try { onboardDraft = JSON.parse(localStorage.getItem('soulcore_onboard_draft') || '{}'); } catch (e) {}
+
+    var prompt = [
+      '请根据用户当前状态总结此刻的"调子" — 即用户正在主要做什么、用什么节奏。',
+      '',
+      '【用户当前状态】',
+      '- 积分：' + (st.points || 0),
+      '- 连续天数：' + (st.streak || 0),
+      '- 长程项目：' + JSON.stringify(st.long_projects || onboardDraft.long_projects || []),
+      '- 用户气质 profile（onboarding 沉淀）：' + JSON.stringify(onboardDraft.user_quality_profile || null),
+      '- 最近 3 条日记：' + JSON.stringify((st.journal || []).slice(-3).map(function(j){return j && (j.text || j);})),
+      '',
+      '请只输出一个 JSON code block，符合：',
+      '```json',
+      '{"phase": "项目名 · 阶段标记 或 一句话", "words": ["关键词1", "关键词2", "关键词3"]}',
+      '```',
+      '',
+      '要求：',
+      '- phase 最多 12 字（汉字算 1）',
+      '- words 2-4 个，每个 2-4 字（如"慢深"/"真名"/"不堆量"）',
+      '- 调子柔、诗意、不堆量、符合用户气质',
+      '- 不要解释、不要寒暄，只出 JSON'
+    ].join('\n');
+
+    var sid;
+    try { sid = localStorage.getItem(MAIN_SESSION_KEY); } catch (e) {}
+    if (!sid || sid.length !== 36) {
+      sid = uuid();
+      try { localStorage.setItem(MAIN_SESSION_KEY, sid); localStorage.removeItem(MAIN_STARTED_KEY); } catch (e) {}
+    }
+    var cont = localStorage.getItem(MAIN_STARTED_KEY) === '1';
+
+    try {
+      var reply = await invoke('cc_chat', {
+        prompt: prompt, sessionId: sid, continueSession: cont, subdir: 'main'
+      });
+      try { localStorage.setItem(MAIN_STARTED_KEY, '1'); } catch (e) {}
+      var m = reply && reply.match(/```json\s*\n([\s\S]*?)\n```/);
+      if (m) {
+        var parsed = JSON.parse(m[1].trim());
+        if (parsed && (parsed.phase || parsed.words)) {
+          renderTone(parsed);
+          saveLongTone(parsed);
+          refreshBtn.title = '上次 CC 总结 今天 · 点击重新总结';
+          resetBtn('✓', 1500);
+          return;
+        }
+      }
+      refreshBtn.title = 'CC 未输出 JSON · ' + String(reply || '').slice(0, 80);
+      resetBtn('⚠', 3000);
+    } catch (e) {
+      refreshBtn.title = '调用失败：' + String(e).slice(0, 80);
+      resetBtn('✕', 3000);
+    }
+  });
+})();
 
 // ============= CC 桥接（本地 Claude Code 子进程，固定 session） =============
 (function () {

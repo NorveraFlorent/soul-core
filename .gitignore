@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code per-repo session config (个人偏好不入 repo)
+.claude/
