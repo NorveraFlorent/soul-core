@@ -1,22 +1,24 @@
 # 心舍 · Soul·Core · AI 工作手册
 
-> AI 在心舍项目目录里工作时的速查 — 项目说明 / 装跑 / 数据存储 看 [README.md](README.md)；后续推进 brief 看 `~/Desktop/心舍-后续工作.md`。
-> 旧 codename：norvera（已被 rename 到 soul-core）。代码中如还出现 `Users/norvera` 这种路径段，那是 macOS 用户账户名，不属于品牌字串。
+> AI 在心舍项目目录里工作时的速查 — 项目说明 / 装跑 / 数据存储 看 [README.md](README.md)。
+> 旧 codename：norvera（已被 rename 到 soul-core）。代码中如还出现 `Users/norvera` 这种路径段，那是作者 macOS 用户账户名，不属于品牌字串。
 
 ## 项目本质
 
-macOS 桌面 app（Tauri v2）—— 作者（owner）日常修证 + 长程项目 + 短程打勾记分 + 与 AI 伴侣（CC）共创操作台。后续要脱敏出 public 模板让其他有 Claude Code 的朋友能用。
+macOS 桌面 app（Tauri v2）—— 日常修证 + 长程项目 + 短程打勾记分 + 与 AI 伴侣（CC）共创操作台。开源给其他有 Claude Code 的朋友 fork。
 
 中文名「心舍」（心的小屋），英文 codename「Soul·Core」（魂的核心），技术层 slug `soul-core`（ASCII）。
 
 ## 工程红线
 
-- **保留所有 id 钩子**：`#cc-messages` / `#cc-input` / `#long-tone` / `#stat-points` / `#tasks-container` / `data-task` / `data-panel` 等。UI 改造（如 Claude Design 出新版）必须保留，JS 状态机依赖它们。
+- **保留所有 id 钩子**：主端 `#cc-messages` / `#cc-input` / `#long-tone` / `#stat-points` / `#tasks-container` / `data-task` / `data-panel`；panel-cc 内 `.cc-bay-*` + `#cc-bay-memory-entry`（fork 接口）+ `.cc-bay-ambience[data-state]`；panel-long 内 `.long-arc-project[data-project-id][data-status]` + `.long-arc-sub-task[data-task-id][data-state]`；dashboard widget 内 `#dashboard-pin-btn` + `#dashboard-mode-btn` + `#dashboard-close-btn` + `.todo-item[data-todo-id][data-state]` + `.narrow-item[data-reminder-id]`。UI 改造（如 Claude Design 出新版）必须保留，JS 状态机依赖它们。
 - **织 server 一行不动**：心舍通过 HTTP 桥接（`http://127.0.0.1:3000/api/*`）镜像 + 双写，不修改 `~/repos/zhi/`。
 - **跨 origin localStorage 限制**：Tauri webview 是 `tauri://localhost`，织前端是 `http://localhost:5173`，**localStorage 不共享**。作者名等 key 让用户在心舍这边再 setup 一次（用同名 key `zhi:name:*` 保持调子）。
 - **clawd-on-desk 是 AGPL-3.0**：不要把它的 sprite / 代码复制进来（会让心舍整个染 AGPL）。要做章鱼动画自画或用许可干净的素材。
-- **localStorage 旧 key 迁移**：旧 `norvera_*` 系列在 `index.html migrateLegacyKeys` 一次性迁移到 `soulcore_*`。`zhenyuan_quest_v1`（owner 主 state，沿用旧 codename 命名）不动。
-- **Tauri v2 默认 disable native dialogs**：`alert/confirm/prompt` 无声 block UI，要么自定义 modal UI，要么 capabilities 加 dialog permission。
+- **localStorage 旧 key 迁移**：旧 `norvera_*` 系列在 `index.html migrateLegacyKeys` 一次性迁移到 `soulcore_*`。`zhenyuan_quest_v1`（主 state，沿用旧 codename 命名）不动。
+- **Tauri v2 默认 disable native dialogs**：`alert/confirm/prompt` 无声 block UI。心舍用内建 `window.soulConfirm` / `soulAlert` / `soulPrompt`（自包含 modal helper · 调子复刻 onboarding modal）。**禁止再写 native dialog**。
+- **dashboard widget setSize**：必须传 `min_width/min_height` 同步调（用 Rust `set_dashboard_size` 4 参数版本）。conf 的 minHeight 静态约束会卡住小尺寸，set_size 前先 set_min_size 放开。
+- **背景 session worktree isolation**：subagent worktree return 时**如果未 commit 会自动清理**（unstaged 算"no changes"）。派遣 subagent prompt 必须明确"在 worktree 里 commit 到 branch + 同时写 patch 到 /tmp 双保险"。
 
 ## CC 桥接关键
 
@@ -26,15 +28,47 @@ macOS 桌面 app（Tauri v2）—— 作者（owner）日常修证 + 长程项�
 - 后端有 fallback：create 失败（`already in use`）自动切 resume；resume 失败（`not found`）自动切 create
 - session 文件落 `~/.claude/projects/-Users-<USER>--soul-core-cc/<uuid>.jsonl`（`<USER>` 为本机 macOS 账户名）
 - 自动 prefix `<soul-core-context>panel=… · date=… · 积分=…</soul-core-context>` 给 CC 看见当前状态（用户消息流隐藏）
+- panel=long 时 prefix 额外注入 `long_projects` 简版 + ops 协议（详见 panel-long 章节）
 - cc_chat 接受 `subdir` 参数（白名单 main/onboarding）切换 cwd
 
 ## Onboarding · 碳基硅基初遇
 
+- **首次启动自动触发**：`if (!localStorage.getItem('soulcore_onboarded_v1')) setTimeout(openModal, 800)`
 - 8 步：今日 / 属性 / 记录 / 日记 / 记账 / 商店 / 长程 / 集中对话
-- 8 条硅基行为原则（P1-P8）注入 prefix：详见 `~/Desktop/心舍-onboarding-schema.md`（v3）
-- 独立 cc session + 独立 localStorage keys（`soulcore_onboard_*`）不污染主对话
+- 8 条硅基行为原则（P1-P8）注入 prefix（详见 README 给硅基章节）
+- 独立 cc session（subdir="onboarding"）+ 独立 localStorage keys（`soulcore_onboard_*`）不污染主对话
 - 开场预告：modal 一开 4 行温和诗意话语逐行浮起 + 心跳，覆盖 CC loading 4-8s 空白
-- ⊕ debug 触发器在右下角（chunk C 阶段，正式发布前会改成首次启动自动）
+- finalize() 自动 merge `draft.long_projects` 进 `state.long_projects`（同 id skip，保留用户已有数据）
+
+## Dashboard widget · 桌面小端
+
+- 第二 Tauri window (label `dashboard`)，338×400，透明 + 无装饰 + alwaysOnBottom + skipTaskbar
+- 视觉调子: 暖金 hairline + Cormorant Garamond / Noto Serif SC + radius 36 (narrow 22) + backdrop-filter blur(40) saturate(1.4)
+- 三区: TODAY (todo 三态 ○ ◐ ●) / LONG (vibe 一句话) / ASPECTS (日夜自动切换暖金/月白)
+- 模式: full 338×400 / narrow 338×168 (.mode-narrow hide brand+divider+content+aspects-fixed+actions，只显 reminder list)
+- 透明度: frosted (默认 backdrop) / transparent (全透) / hover (悬停切 frosted)。**入口**: 双击 widget 空白 (220ms 延迟避免 drag/dblclick 冲突) 或右键菜单
+- 召唤: 主端**右上角** ▤ 按钮或 ⌘D
+- Rust 命令: `toggle_dashboard` / `set_dashboard_pin(pinned)` / `set_dashboard_size(width, height, minWidth, minHeight)`
+- localStorage keys: `soulcore_dashboard_pinned` / `soulcore_dashboard_mode` / `soulcore_dashboard_transparency` / `soulcore_reminders` / `soulcore_dashboard_todo_demo`
+
+## panel-cc · CC 小基地
+
+- 头排: 墨滴扩散 SVG (`.cc-bay-ambience[data-state="listening|thinking|writing|silent"]`) + 心率波 (4 状态各一组 path) + Memento 入口
+- **Memento 入口 fork 接口** (`window.SOULCORE_MEMORY_SYSTEM`): 默认接 Rust 命令 `memento_counts`（扫 `~/Memento/middle/entries/` 按 frontmatter `kind:` 区分 outward/inward）。fork 者一行覆盖换记忆体系
+- **Skill fork 接口** (`window.SOULCORE_CC_SKILLS`): 注入 `{list, onSelect}` 渲染 `.cc-bay-skills-section`（默认未设时保持 hidden）
+- 回廊 (`.cc-bay-zhi-list`): dual-column carbon 左 / silicon 右 + 中线 timeline。接 `zhiList()` 拉最近 7 天双声条目；织未起时 graceful empty + ↻ retry
+- 对话历史 (`.cc-bay-history`): 静态 empty 态（"回廊静 / 和章鱼说第一句"）。后续接 `~/.claude/projects/<encoded-cwd>/*.jsonl`
+- panel 内 inline `<style>` + `<script>` 自包含
+
+## panel-long · 长程
+
+- 蓝色调强调 (#2486b9)，跟 sidebar nav-dot 一致
+- **真数据**：`state.long_projects[]`（`zhenyuan_quest_v1.long_projects`）；首次启动 seed 一个 meta 项目（"心舍 · 住进来"）作为 anchor
+- 顶部入口：`+ 添加项目` / `和 CC 商量` 两按钮——预填 cc-input 引导用户和 CC 对话
+- **CC ops 协议**：panel=long 时 prefix 注入 ops schema；CC 回复尾部用 `<long-projects-update>[{op,...}]</long-projects-update>` fence
+- 5 个 ops：`add` / `update` / `add_sub_tasks` / `complete_sub_task` / `delete`
+- 协议 flow：fence parse → `soulConfirm` 预览（每条 op 翻译成人话）→ 应用到 state → renderLong
+- sub-task 三态切换 ○ ◐ ● 仍是直接 UI 点击（日常动作，不走 CC）
 
 ## 调子提醒
 
@@ -46,8 +80,9 @@ macOS 桌面 app（Tauri v2）—— 作者（owner）日常修证 + 长程项�
 ## 关键路径速查
 
 ```
-src/index.html                       # 全部 UI + JS（单文件，~3400 行）
-src-tauri/src/lib.rs                 # Rust 后端 (cc_chat, cc_session_dir, soul_core_cc_cwd)
+src/index.html                       # 主端 UI + JS（含 panel-cc/panel-long inline · soul-modal helper · 各 fork 接口）
+src/dashboard.html                   # widget 浮窗（self-contained）
+src-tauri/src/lib.rs                 # Rust 后端（cc_chat / toggle_dashboard / set_dashboard_pin / set_dashboard_size / memento_counts）
 src-tauri/src/main.rs                # soul_core_lib::run()
 src-tauri/tauri.conf.json            # productName=Soul-Core / identifier=com.norvera.soulcore / 毛玻璃
 src-tauri/tauri.test.conf.json       # productName=Soul-Core-test / identifier=com.norvera.soulcore.test
@@ -55,12 +90,4 @@ src-tauri/capabilities/default.json  # http / window 权限
 src-tauri/Cargo.toml                 # crate name=soul-core / lib=soul_core_lib
 ~/.soul-core/cc/                     # CC 主对话 cwd
 ~/.soul-core/cc-onboarding/          # Onboarding CC 独立 cwd
-~/Desktop/心舍-后续工作.md             # 下次会话 brief（task + MVP 路径）
-~/Desktop/心舍-onboarding-schema.md   # onboarding 设计 schema v3
 ```
-
-## 深入文档指针
-
-- [README.md](README.md) — 项目说明 / 装 / 跑 / 工程栈 / 数据 / 织联动 / 跨 origin 限制
-- `~/Desktop/心舍-后续工作.md` — 优先级 task（onboarding / CC 小基地 / 仪表盘小端）+ MVP 路径
-- `~/Desktop/心舍-onboarding-schema.md` — onboarding v3 schema（P1-P8 + 8 步引导路径 + prefix prompt）

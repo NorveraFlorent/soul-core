@@ -125,12 +125,168 @@ fn cc_session_dir(subdir: Option<String>) -> Result<String, String> {
     Ok(cwd.to_string_lossy().to_string())
 }
 
+/// 默认 Memento 计数器：扫 ~/Memento/middle/entries/ 下所有 .md 文件
+/// 按 frontmatter `kind:` 字段区分 outward / inward。
+/// 返回 { outward, inward, available } —— available=false 表示 Memento 目录不存在
+/// （fork 者通常会用 window.SOULCORE_MEMORY_SYSTEM 覆盖 loadCounts，这是默认接到作者 Memento 的实现）
+#[tauri::command]
+fn memento_counts() -> Result<serde_json::Value, String> {
+    let home = std::env::var("HOME").map_err(|e| format!("no HOME: {}", e))?;
+    let base = std::path::PathBuf::from(&home)
+        .join("Memento")
+        .join("middle")
+        .join("entries");
+    if !base.exists() {
+        return Ok(serde_json::json!({ "outward": 0, "inward": 0, "available": false }));
+    }
+    let mut outward: u32 = 0;
+    let mut inward: u32 = 0;
+    fn walk(dir: &std::path::Path, outward: &mut u32, inward: &mut u32) {
+        let Ok(rd) = std::fs::read_dir(dir) else { return };
+        for ent in rd.flatten() {
+            let p = ent.path();
+            if p.is_dir() {
+                walk(&p, outward, inward);
+            } else if p.extension().map_or(false, |x| x == "md") {
+                let Ok(s) = std::fs::read_to_string(&p) else { continue };
+                // 只看前 ~30 行的 frontmatter
+                for line in s.lines().take(30) {
+                    let t = line.trim();
+                    if let Some(rest) = t.strip_prefix("kind:") {
+                        let v = rest.trim().trim_matches('"').trim_matches('\'');
+                        if v == "outward" { *outward += 1; }
+                        else if v == "inward" { *inward += 1; }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    walk(&base, &mut outward, &mut inward);
+    Ok(serde_json::json!({ "outward": outward, "inward": inward, "available": true }))
+}
+
+/// macOS · 把 dashboard window 设成"桌面图标层"，跟原生桌面 widget 同层级
+/// NSDesktopIconWindowLevel ≈ -2147483603（桌面图标所在层，wallpaper 之上、所有 app 之下）
+/// 注意：那层 macOS 默认不接收 mouse events——若要让 widget 可交互必须自定义 canBecomeKey
+/// 目前未使用（保留以备实验），widget 体验由 alwaysOnBottom + transparent + decorations:false 组合实现
+#[cfg(target_os = "macos")]
+#[allow(dead_code)]
+#[allow(deprecated)]
+fn set_dashboard_to_widget_level(win: &tauri::WebviewWindow) -> Result<(), String> {
+    use cocoa::appkit::NSWindow;
+    use cocoa::base::id;
+    let ns_window_ptr = win.ns_window().map_err(|e| e.to_string())?;
+    let ns_window: id = ns_window_ptr as id;
+    unsafe {
+        NSWindow::setLevel_(ns_window, -2147483603);
+    }
+    Ok(())
+}
+
+/// 切换 dashboard widget 前置固定状态
+/// pinned=true → alwaysOnTop（始终前置，像 mac 便签 Float on Top）
+/// pinned=false → alwaysOnBottom（widget 默认行为，在所有 app 后面）
+#[tauri::command]
+async fn set_dashboard_pin(app: tauri::AppHandle, pinned: bool) -> Result<bool, String> {
+    use tauri::Manager;
+    let win = app
+        .get_webview_window("dashboard")
+        .ok_or_else(|| "dashboard window not found".to_string())?;
+    if pinned {
+        win.set_always_on_bottom(false).map_err(|e| e.to_string())?;
+        win.set_always_on_top(true).map_err(|e| e.to_string())?;
+    } else {
+        win.set_always_on_top(false).map_err(|e| e.to_string())?;
+        win.set_always_on_bottom(true).map_err(|e| e.to_string())?;
+    }
+    Ok(pinned)
+}
+
+/// 切换 dashboard widget 尺寸（完整模式 / 收窄提醒模式）
+/// width/height 单位为逻辑像素（Tauri LogicalSize），不受 DPR 影响
+/// min_width/min_height 同步调整，避免 conf 的 minSize 卡住小尺寸（如 narrow 120 高被 conf minHeight 340 阻挡）
+#[tauri::command]
+async fn set_dashboard_size(
+    app: tauri::AppHandle,
+    width: f64,
+    height: f64,
+    min_width: Option<f64>,
+    min_height: Option<f64>,
+) -> Result<(), String> {
+    use tauri::Manager;
+    let win = app
+        .get_webview_window("dashboard")
+        .ok_or_else(|| "dashboard window not found".to_string())?;
+    // 先放开 min_size，再 set_size，否则 set_size 被旧 min 卡住
+    let mw = min_width.unwrap_or(width.min(240.0));
+    let mh = min_height.unwrap_or(height.min(100.0));
+    win.set_min_size(Some(tauri::LogicalSize::new(mw, mh)))
+        .map_err(|e| e.to_string())?;
+    win.set_size(tauri::LogicalSize::new(width, height))
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn toggle_dashboard(app: tauri::AppHandle) -> Result<bool, String> {
+    use tauri::Manager;
+    let win = app
+        .get_webview_window("dashboard")
+        .ok_or_else(|| "dashboard window not found".to_string())?;
+    let visible = win.is_visible().map_err(|e| e.to_string())?;
+    if visible {
+        win.hide().map_err(|e| e.to_string())?;
+        Ok(false)
+    } else {
+        win.show().map_err(|e| e.to_string())?;
+        win.set_focus().map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
-        .invoke_handler(tauri::generate_handler![cc_chat, cc_session_dir])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_filter(|label| label == "main")
+                .build(),
+        )
+        .setup(|_app| {
+            // 撤回 NSDesktopIconWindowLevel: 那层 macOS 默认不接收 mouse events
+            // 改用 alwaysOnBottom (在 tauri.conf.json) — widget 仍在所有 app 后面但能交互
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            // 主窗口关闭（点红点 / Cmd+Q）→ 整个 app 退出
+            // 修 transparent + macOSPrivateApi + 无装饰窗口下 Cmd+Q 没真正 terminate 的 bug
+            // dashboard widget 独立关闭不触发 app 退出（保持 widget 可作为常驻浮窗的语义）
+            use tauri::Manager;
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                if window.label() == "main" {
+                    window.app_handle().exit(0);
+                }
+            }
+        })
+        .invoke_handler(tauri::generate_handler![cc_chat, cc_session_dir, toggle_dashboard, set_dashboard_pin, set_dashboard_size, memento_counts])
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // macOS: dock icon click / cmd-tab activate → unminimize + show + focus main window
+            // 缺这个 handler，主窗口 minimize 后 dock 点击不会重新显示（特别是 transparent+macOSPrivateApi 下）
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { has_visible_windows, .. } = event {
+                use tauri::Manager;
+                if !has_visible_windows {
+                    if let Some(win) = app.get_webview_window("main") {
+                        let _ = win.unminimize();
+                        let _ = win.show();
+                        let _ = win.set_focus();
+                    }
+                }
+            }
+        });
 }

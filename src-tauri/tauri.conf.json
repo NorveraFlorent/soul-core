@@ -11,6 +11,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
+        "label": "main",
         "title": "心舍 · Soul·Core",
         "width": 1120,
         "height": 840,
@@ -22,9 +23,26 @@
         "transparent": true,
         "shadow": true,
         "windowEffects": {
-          "effects": ["hudWindow"],
+          "effects": [
+            "hudWindow"
+          ],
           "state": "active"
         }
+      },
+      {
+        "label": "dashboard",
+        "title": "心舍 · 仪表盘",
+        "width": 338,
+        "height": 400,
+        "minWidth": 280,
+        "minHeight": 340,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "url": "dashboard.html",
+        "alwaysOnBottom": true,
+        "skipTaskbar": true,
+        "acceptFirstMouse": true
       }
     ],
     "security": {

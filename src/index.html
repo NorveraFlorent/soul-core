@@ -400,6 +400,11 @@ body::before {
   box-shadow: 0 0 0 0.5px color-mix(in srgb, currentColor 18%, transparent);
 }
 .nav-item .nav-zh { flex: 1; }
+.nav-item[data-panel="cc"] .nav-zh {
+  letter-spacing: 0.45em;
+  /* 抵消 letter-spacing 在末尾的 trailing 让 nav-en 起点接近其他 item */
+  margin-right: -0.25em;
+}
 .nav-item .nav-en {
   font-family: var(--serif-en);
   font-size: 11px;
@@ -1609,6 +1614,53 @@ body::before {
   min-height: 36px;
   white-space: pre-wrap;
 }
+.onboard-cc-pager {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  margin-top: 18px;
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+.onboard-cc-pager.visible { opacity: 1; }
+.onboard-cc-pager[hidden] { display: none; }
+.onboard-cc-pager-indicator {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: rgba(250, 229, 179, 0.5);
+}
+.onboard-cc-pager-next {
+  background: transparent;
+  border: 1px solid rgba(250, 229, 179, 0.4);
+  color: rgba(250, 229, 179, 0.88);
+  padding: 6px 18px;
+  font-family: 'Cormorant Garamond', '思源宋体', 'Source Han Serif SC', serif;
+  font-size: 12px;
+  letter-spacing: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 400ms ease;
+}
+.onboard-cc-pager-next:hover {
+  background: rgba(250, 229, 179, 0.14);
+  border-color: rgba(250, 229, 179, 0.65);
+}
+
+.cc-page {
+  display: none;
+  white-space: pre-wrap;
+}
+.cc-page.active {
+  display: block;
+  animation: cc-page-in 600ms ease-out;
+}
+@keyframes cc-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .typewriter-cursor {
   display: inline-block;
   width: 2px;
@@ -1683,6 +1735,72 @@ body::before {
   border-color: rgba(250, 229, 179, 0.7);
 }
 
+.onboard-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px 36px;
+  background: rgba(250, 241, 220, 0.035);
+  border-left: 2px solid rgba(250, 229, 179, 0.4);
+  border-radius: 0 8px 8px 0;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 700ms ease, transform 700ms ease;
+}
+.onboard-prompt[hidden] { display: none; }
+.onboard-prompt.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.onboard-prompt-author {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 10px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: rgba(250, 229, 179, 0.55);
+}
+.onboard-prompt-msg {
+  font-family: '思源宋体', 'Source Han Serif SC', 'Cormorant Garamond', serif;
+  font-size: 17px;
+  line-height: 1.75;
+  color: rgba(250, 241, 220, 0.94);
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  white-space: pre-wrap;
+  min-height: 36px;
+}
+.onboard-prompt-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 4px;
+}
+.onboard-prompt-primary, .onboard-prompt-secondary {
+  background: transparent;
+  border: 1px solid rgba(250, 241, 220, 0.22);
+  color: rgba(250, 241, 220, 0.7);
+  padding: 10px 24px;
+  font-family: 'Cormorant Garamond', '思源宋体', 'Source Han Serif SC', serif;
+  font-size: 13px;
+  letter-spacing: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 400ms ease;
+}
+.onboard-prompt-secondary:hover {
+  border-color: rgba(250, 241, 220, 0.5);
+  color: rgba(250, 241, 220, 0.95);
+}
+.onboard-prompt-primary {
+  background: rgba(250, 229, 179, 0.08);
+  border-color: rgba(250, 229, 179, 0.45);
+  color: rgba(250, 229, 179, 0.95);
+}
+.onboard-prompt-primary:hover {
+  background: rgba(250, 229, 179, 0.18);
+  border-color: rgba(250, 229, 179, 0.7);
+}
+
 .onboard-footnote {
   text-align: center;
   font-family: 'Cormorant Garamond', serif;
@@ -1712,18 +1830,19 @@ body:has(.onboard-modal.visible) .window {
   transition: opacity 1400ms ease, transform 1400ms ease, filter 1400ms ease;
 }
 
-/* dev 触发器（chunk B 预览用；chunk C 后改为首次启动自动 / 测试包按钮） */
-.onboard-debug-trigger {
+/* dashboard widget 召唤入口 · 右上角（离 macOS menu bar 近，user 直觉位置）
+   onboarding 触发器（⊕）已移除——onboarding 改为首次启动自动跑；⌘D 仍可召唤 widget */
+.dashboard-trigger {
   position: fixed;
-  bottom: 12px;
-  right: 12px;
+  top: 14px;
+  right: 14px;
   width: 30px;
   height: 30px;
   border-radius: 50%;
   background: rgba(250, 229, 179, 0.14);
   border: 1px solid rgba(250, 229, 179, 0.32);
   color: rgba(250, 229, 179, 0.9);
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
   z-index: 99;
   opacity: 0.5;
@@ -1733,7 +1852,12 @@ body:has(.onboard-modal.visible) .window {
   justify-content: center;
   line-height: 1;
 }
-.onboard-debug-trigger:hover { opacity: 1; }
+.dashboard-trigger:hover { opacity: 1; }
+.dashboard-trigger.active {
+  background: rgba(250, 229, 179, 0.28);
+  border-color: rgba(250, 229, 179, 0.6);
+  opacity: 1;
+}
 
 /* CC 思考中的呼吸三点（替代 '…' 字符） */
 .cc-thinking {
@@ -1795,6 +1919,117 @@ body:has(.onboard-modal.visible) .window {
   font-size: 13px;
   letter-spacing: 0.3em;
   color: rgba(250, 229, 179, 0.55);
+}
+
+/* ═══════════ soul-modal · 通用 confirm/alert/prompt 容器 ═══════════
+   Tauri v2 默认 disable native alert/confirm/prompt（红线 #6）。
+   调子完全复刻 .onboard-prompt，但作为独立 helper 可随时召唤。
+   z-index 110 > onboard-modal 的 100，保证压在最上层。
+   ═════════════════════════════════════════════════════════════════ */
+.soul-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.soul-modal[hidden] { display: none; }
+.soul-modal.visible { opacity: 1; }
+.soul-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 14, 26, 0.78);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+}
+.soul-modal-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px 36px;
+  min-width: 320px;
+  max-width: 520px;
+  background: rgba(250, 241, 220, 0.035);
+  border-left: 2px solid rgba(250, 229, 179, 0.4);
+  border-radius: 0 8px 8px 0;
+  transform: translateY(8px);
+  transition: transform 300ms ease;
+}
+.soul-modal.visible .soul-modal-card { transform: translateY(0); }
+.soul-modal-author {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 10px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: rgba(250, 229, 179, 0.55);
+}
+.soul-modal-msg {
+  font-family: '思源宋体', 'Source Han Serif SC', 'Cormorant Garamond', serif;
+  font-size: 17px;
+  line-height: 1.75;
+  color: rgba(250, 241, 220, 0.94);
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  white-space: pre-wrap;
+  min-height: 36px;
+}
+.soul-modal-input {
+  background: rgba(250, 241, 220, 0.05);
+  border: 1px solid rgba(250, 241, 220, 0.15);
+  color: rgba(250, 241, 220, 0.95);
+  padding: 14px 18px;
+  font-family: '思源宋体', 'Source Han Serif SC', serif;
+  font-size: 15px;
+  line-height: 1.65;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 400ms ease, background 400ms ease;
+}
+.soul-modal-input:focus {
+  border-color: rgba(250, 229, 179, 0.5);
+  background: rgba(250, 241, 220, 0.08);
+}
+.soul-modal-input::placeholder {
+  color: rgba(250, 241, 220, 0.3);
+  font-style: italic;
+}
+.soul-modal-input[hidden] { display: none; }
+.soul-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 4px;
+}
+.soul-modal-primary, .soul-modal-secondary {
+  background: transparent;
+  border: 1px solid rgba(250, 241, 220, 0.22);
+  color: rgba(250, 241, 220, 0.7);
+  padding: 10px 24px;
+  font-family: 'Cormorant Garamond', '思源宋体', 'Source Han Serif SC', serif;
+  font-size: 13px;
+  letter-spacing: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 400ms ease;
+}
+.soul-modal-secondary:hover {
+  border-color: rgba(250, 241, 220, 0.5);
+  color: rgba(250, 241, 220, 0.95);
+}
+.soul-modal-secondary[hidden] { display: none; }
+.soul-modal-primary {
+  background: rgba(250, 229, 179, 0.08);
+  border-color: rgba(250, 229, 179, 0.45);
+  color: rgba(250, 229, 179, 0.95);
+}
+.soul-modal-primary:hover {
+  background: rgba(250, 229, 179, 0.18);
+  border-color: rgba(250, 229, 179, 0.7);
 }
 </style>
 </head>
@@ -2003,19 +2238,1259 @@ body:has(.onboard-modal.visible) .window {
     <!-- ═══════ 新增 panel (占位，工程层将来填) ═══════ -->
 
     <div class="panel" id="panel-long">
-      <div class="placeholder-panel">
-        <div class="ph-glyph">远</div>
-        <div class="ph-line">长程项目 · 调子 · 子任务</div>
-        <div class="ph-sub">Long-arc · Phase · Sub-tasks</div>
+      <!-- ═══════════════════════════════════════════════════════════════════
+           Long-arc · 长程项目 · phase · vibe · sub-tasks
+           ─────────────────────────────────────────────────────────────────
+           外壳 .panel#panel-long 保留；内部以 long-arc- 前缀避免与其他 panel 冲突
+           接入点（CC 接回时填数据）：
+             .long-arc-list           · 项目列表容器
+             .long-arc-project        · 单个项目卡 + data-project-id / data-status
+             .long-arc-sub-task       · 子任务行 + data-task-id / data-done
+           ═══════════════════════════════════════════════════════════════════ -->
+
+      <style>
+        #panel-long {
+          --long-line:      rgba(36, 134, 185, 0.85);    /* 蓝主色 · 跟 nav-dot 一致 */
+          --long-line-soft: rgba(36, 134, 185, 0.42);
+          --long-line-hair: rgba(36, 134, 185, 0.18);
+          --long-fill:      rgba(36, 134, 185, 0.06);
+          --long-warm:      rgba(250, 229, 179, 0.85);   /* phase 暖金 */
+          --text-warm:      rgba(250, 241, 220, 0.94);
+          --text-soft:      rgba(250, 241, 220, 0.62);
+          --text-mute:      rgba(250, 241, 220, 0.34);
+
+          background:
+            radial-gradient(140% 80% at 50% 0%, rgba(36, 134, 185, 0.05), transparent 55%),
+            rgba(15, 18, 25, 0.55);
+          border: 1px solid rgba(36, 134, 185, 0.10);
+          border-radius: 10px;
+          padding: 26px 30px 30px;
+          color: var(--text-warm);
+          overflow-y: auto;
+        }
+
+        /* ───── 头排 · 计数 ───── */
+        .long-arc-head {
+          display: flex;
+          align-items: baseline;
+          gap: 14px;
+          padding-bottom: 18px;
+          border-bottom: 1px solid var(--long-line-hair);
+          margin-bottom: 22px;
+        }
+        .long-arc-head .zh {
+          font-family: var(--serif);
+          font-size: 17px;
+          font-weight: 300;
+          letter-spacing: 0.42em;
+          color: var(--text-warm);
+        }
+        .long-arc-head .en {
+          font-family: var(--serif-en);
+          font-style: italic;
+          font-size: 13px;
+          font-weight: 300;
+          color: var(--text-mute);
+          letter-spacing: 0.08em;
+        }
+        .long-arc-head .rule { flex: 1; height: 1px; background: var(--long-line-hair); margin: 0 6px; }
+        .long-arc-head .meta {
+          font-family: var(--mono);
+          font-size: 10px;
+          letter-spacing: 0.24em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+        }
+        .long-arc-head .meta b {
+          color: var(--long-line);
+          font-family: var(--serif-en);
+          font-size: 14px;
+          letter-spacing: 0.02em;
+          margin: 0 4px;
+        }
+
+        /* ───── CC 对话入口区 ───── */
+        .long-arc-actions {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-bottom: 28px;
+          flex-wrap: wrap;
+        }
+        .long-arc-action {
+          background: transparent;
+          border: 1px solid var(--long-line-hair);
+          color: var(--text-soft);
+          font-family: var(--serif);
+          font-size: 12.5px;
+          font-weight: 300;
+          letter-spacing: 0.18em;
+          padding: 7px 18px;
+          border-radius: 22px;
+          cursor: pointer;
+          transition: all 0.25s ease;
+        }
+        .long-arc-action:hover {
+          background: var(--long-fill);
+          border-color: var(--long-line-soft);
+          color: var(--long-line);
+        }
+        .long-arc-actions-hint {
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.22em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+          margin-left: 4px;
+        }
+
+        /* ───── 项目列表 ───── */
+        .long-arc-list {
+          display: flex;
+          flex-direction: column;
+          gap: 28px;
+        }
+        .long-arc-empty {
+          text-align: center;
+          padding: 48px 0 32px;
+          color: var(--text-mute);
+        }
+        .long-arc-empty-zh {
+          font-family: var(--serif);
+          font-size: 14px;
+          letter-spacing: 0.3em;
+          color: var(--text-soft);
+          margin-bottom: 6px;
+        }
+        .long-arc-empty-hint {
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.22em;
+          color: var(--text-mute);
+        }
+        .long-arc-project {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          padding-left: 14px;
+          border-left: 2px solid var(--long-line-soft);
+          transition: border-color 0.3s;
+        }
+        .long-arc-project:hover { border-left-color: var(--long-line); }
+        .long-arc-project[data-status="paused"] {
+          border-left-color: rgba(120, 130, 145, 0.35);
+          opacity: 0.65;
+        }
+
+        .long-arc-project-head {
+          display: flex;
+          align-items: baseline;
+          gap: 14px;
+          flex-wrap: wrap;
+        }
+        .long-arc-project-name {
+          font-family: var(--serif);
+          font-size: 15px;
+          font-weight: 400;
+          color: var(--text-warm);
+          letter-spacing: 0.06em;
+        }
+        .long-arc-project-phase {
+          font-family: var(--serif-en);
+          font-style: italic;
+          font-size: 11.5px;
+          color: var(--long-warm);
+          letter-spacing: 0.06em;
+        }
+        .long-arc-project-meta {
+          margin-left: auto;
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.22em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+        }
+        .long-arc-project-vibe {
+          font-family: var(--serif);
+          font-size: 13px;
+          font-weight: 300;
+          color: var(--text-soft);
+          line-height: 1.6;
+          letter-spacing: 0.02em;
+        }
+
+        /* sub-tasks */
+        .long-arc-sub-list {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          margin-top: 2px;
+          list-style: none;
+        }
+        .long-arc-sub-task {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 4px 0;
+          cursor: pointer;
+          font-size: 13px;
+          color: var(--text-warm);
+          letter-spacing: 0.02em;
+          transition: opacity 0.2s;
+        }
+        .long-arc-sub-task:hover .long-arc-sub-glyph {
+          border-color: var(--long-line);
+        }
+        .long-arc-sub-glyph {
+          flex: 0 0 11px;
+          width: 11px; height: 11px;
+          border: 0.75px solid var(--long-line-soft);
+          border-radius: 50%;
+          position: relative;
+          transition: all 0.2s;
+        }
+        .long-arc-sub-task[data-state="doing"] .long-arc-sub-glyph::after {
+          content: "";
+          position: absolute;
+          left: 0; top: 0; bottom: 0;
+          width: 50%;
+          background: var(--long-line);
+          border-radius: 999px 0 0 999px;
+        }
+        .long-arc-sub-task[data-state="done"] .long-arc-sub-glyph {
+          background: var(--long-line);
+          border-color: var(--long-line);
+          box-shadow: 0 0 6px rgba(36, 134, 185, 0.35);
+        }
+        .long-arc-sub-task[data-state="done"] {
+          color: var(--text-mute);
+          text-decoration: line-through;
+          text-decoration-color: var(--long-line-soft);
+        }
+        .long-arc-sub-task .sub-tag {
+          margin-left: auto;
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.22em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+        }
+      </style>
+
+      <div class="long-arc-head">
+        <span class="zh">长&nbsp;程</span>
+        <span class="en">Long arc · phase · sub-tasks</span>
+        <span class="rule"></span>
+        <span class="meta" id="long-arc-meta">—</span>
       </div>
+
+      <!-- CC 对话入口区：在 panel-long 顶部，引导用户和 CC 商量长程 -->
+      <div class="long-arc-actions">
+        <button type="button" class="long-arc-action" data-long-action="add">+ 添加项目</button>
+        <button type="button" class="long-arc-action" data-long-action="chat">和 CC 商量</button>
+        <span class="long-arc-actions-hint">点击 sub-task 切换 ○ ◐ ●；项目本身的增删改通过 CC 对话</span>
+      </div>
+
+      <!-- 项目列表容器（renderLong 渲染；初始为空，等 state 加载后填入） -->
+      <div class="long-arc-list" id="long-arc-list"></div>
     </div>
 
     <div class="panel" id="panel-cc">
-      <div class="placeholder-panel">
-        <div class="ph-glyph">章</div>
-        <div class="ph-line">CC 在下方常驻 · 此处放完整对话历史 / 设置</div>
-        <div class="ph-sub">Companion · Full view</div>
+      <!-- ═════════════════════════════════════════════════════════════════
+           CC bay  ·  织回廊 + 氛围 + 完整对话 + Memento 入口
+           ─────────────────────────────────────────────────────────────────
+           外壳 .panel#panel-cc 保留；内部全新视觉。
+           class 以 cc-bay- 前缀，避免与其余面板冲突。
+           ───── 外部接入点 (CC 接回时挂数据)：
+             .cc-bay-zhi-list        · 织条目列表容器
+             .cc-bay-history         · CC 对话历史容器
+             .cc-bay-ambience        · 氛围视觉层 (data-state 切换状态)
+             .cc-bay-memento-entry   · 记忆池入口
+           ═════════════════════════════════════════════════════════════════ -->
+
+      <style>
+        /* CC bay · 调色板 (panel 内局部覆盖；不污染外部) */
+        #panel-cc {
+          --cc-line:       rgba(250, 229, 179, 0.95);
+          --cc-line-soft:  rgba(250, 229, 179, 0.40);
+          --cc-line-hair:  rgba(250, 229, 179, 0.16);
+          --cc-fill:       rgba(250, 229, 179, 0.07);
+          --text-warm:     rgba(250, 241, 220, 0.94);
+          --text-soft:     rgba(250, 241, 220, 0.60);
+          --text-mute:     rgba(250, 241, 220, 0.32);
+
+          /* 两端的微差：硅基略偏冷 (CC)，碳基沿用暖金 (用户) */
+          --carbon-tint:   rgba(250, 229, 179, 0.95);
+          --silicon-tint:  rgba(206, 224, 240, 0.82);
+
+          /* 暗底 — 模拟 macOS hudWindow vibrancy；接回时可移除，由原生提供 */
+          background:
+            radial-gradient(140% 80% at 50% 0%, rgba(250,229,179,0.06), transparent 55%),
+            rgba(15, 15, 20, 0.55);
+          border: 1px solid rgba(250, 229, 179, 0.08);
+          border-radius: 10px;
+          padding: 26px 30px 30px;
+          color: var(--text-warm);
+        }
+        #panel-cc::-webkit-scrollbar-thumb {
+          background: rgba(250, 229, 179, 0.12);
+        }
+
+        /* ───── 头排：氛围 · 心率 · Memento ───── */
+        .cc-bay-head {
+          display: grid;
+          grid-template-columns: auto 1fr auto;
+          align-items: center;
+          gap: 26px;
+          padding-bottom: 22px;
+          border-bottom: 1px solid var(--cc-line-hair);
+          margin-bottom: 26px;
+        }
+        .cc-bay-ambience {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          cursor: pointer;   /* 点状态字可切换状态（demo 用，CC 接回后移除） */
+          user-select: none;
+        }
+        .cc-bay-ink {
+          width: 96px;
+          height: 56px;
+          overflow: visible;
+          flex-shrink: 0;
+        }
+        .cc-bay-ink .ink-core    { fill: var(--cc-line); }
+        .cc-bay-ink .ink-ring    { fill: none; stroke: var(--cc-line); stroke-width: 0.6; transform-origin: 0 0; opacity: 0; }
+        .cc-bay-ink .ink-ring.r1 { animation: cc-ink-pulse 5.6s ease-out infinite; }
+        .cc-bay-ink .ink-ring.r2 { animation: cc-ink-pulse 5.6s ease-out infinite; animation-delay: 1.9s; stroke-width: 0.45; }
+        .cc-bay-ink .ink-ring.r3 { animation: cc-ink-pulse 5.6s ease-out infinite; animation-delay: 3.8s; stroke-width: 0.35; }
+        .cc-bay-ink .ink-core    { animation: cc-ink-breathe 4.8s ease-in-out infinite; transform-origin: 0 0; }
+        @keyframes cc-ink-pulse {
+          0%   { transform: scale(0.45); opacity: 0; }
+          20%  { opacity: 0.75; }
+          100% { transform: scale(5.4); opacity: 0; }
+        }
+        @keyframes cc-ink-breathe {
+          0%, 100% { transform: scale(1);   opacity: 0.85; }
+          50%      { transform: scale(1.4); opacity: 1; }
+        }
+
+        /* 状态文字 · 状态切换由 data-state 控制（CC 接回时切换属性即可） */
+        .cc-bay-state .state-zh {
+          font-family: var(--serif);
+          font-size: 17px;
+          font-weight: 300;
+          letter-spacing: 0.42em;
+          color: var(--text-warm);
+          margin-bottom: 6px;
+        }
+        .cc-bay-state .state-en {
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.32em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+        }
+        .cc-bay-state .state-en em {
+          font-style: normal;
+          color: var(--cc-line);
+          margin-right: 6px;
+        }
+
+        /* 状态变体 · listening · thinking · writing · silent */
+        .cc-bay-ambience[data-state="thinking"] .ink-ring { animation-duration: 3.2s; }
+        .cc-bay-ambience[data-state="writing"]  .ink-core,
+        .cc-bay-ambience[data-state="writing"]  .ink-ring { stroke: rgba(180,200,230,0.7); fill: rgba(180,200,230,0.85); }
+        .cc-bay-ambience[data-state="silent"]   .ink-ring { animation-duration: 9s; opacity: 0; }
+        .cc-bay-ambience[data-state="silent"]   .ink-core { opacity: 0.3; animation-duration: 7s; }
+
+        /* ───── 心率 · 与状态同步 ─────
+           原理：长路径 + CSS translateX 滚动；每种状态一组独立路径与节奏。
+           color / amplitude / period 跟 state 走。 */
+        .cc-bay-pulse {
+          align-self: stretch;
+          display: flex;
+          align-items: center;
+          min-width: 0;
+          height: 56px;
+          overflow: hidden;
+          mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+          -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+        }
+        .cc-bay-pulse svg {
+          width: 100%;
+          height: 100%;
+          display: block;
+          overflow: visible;
+        }
+        .pulse-base {
+          stroke: var(--cc-line-hair);
+          stroke-width: 0.5;
+        }
+        .pulse-track {
+          fill: none;
+          stroke-width: 1;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          display: none;
+          filter: drop-shadow(0 0 4px rgba(250, 229, 179, 0.18));
+        }
+        .cc-bay-ambience[data-state="listening"] ~ .cc-bay-pulse .pulse-track.listening,
+        .cc-bay-ambience[data-state="thinking"]  ~ .cc-bay-pulse .pulse-track.thinking,
+        .cc-bay-ambience[data-state="writing"]   ~ .cc-bay-pulse .pulse-track.writing,
+        .cc-bay-ambience[data-state="silent"]    ~ .cc-bay-pulse .pulse-track.silent {
+          display: block;
+        }
+
+        /* listening · 缓慢沉静起伏 + 偶尔一抹小心跳 */
+        .pulse-track.listening {
+          stroke: var(--cc-line);
+          opacity: 0.78;
+          animation: pulse-scroll-600 9s linear infinite;
+        }
+        /* thinking · ECG-like 紧凑节律，密一些 */
+        .pulse-track.thinking {
+          stroke: var(--cc-line);
+          opacity: 0.92;
+          animation: pulse-scroll-400 3.2s linear infinite;
+          filter: drop-shadow(0 0 5px rgba(250, 229, 179, 0.32));
+        }
+        /* writing · 微偏蓝，规整柔和节拍 */
+        .pulse-track.writing {
+          stroke: rgba(190, 210, 235, 0.82);
+          opacity: 0.85;
+          animation: pulse-scroll-500 5.2s linear infinite;
+          filter: drop-shadow(0 0 4px rgba(180, 200, 230, 0.28));
+        }
+        /* silent · 几乎平 · 久久一波 */
+        .pulse-track.silent {
+          stroke: var(--cc-line-soft);
+          opacity: 0.55;
+          animation: pulse-scroll-800 14s linear infinite;
+          filter: none;
+        }
+
+        @keyframes pulse-scroll-400 { to { transform: translateX(-400px); } }
+        @keyframes pulse-scroll-500 { to { transform: translateX(-500px); } }
+        @keyframes pulse-scroll-600 { to { transform: translateX(-600px); } }
+        @keyframes pulse-scroll-800 { to { transform: translateX(-800px); } }
+
+        /* ───── Memento 入口（角落，不占主舞台） ───── */
+        .cc-bay-memento-entry {
+          display: block;
+          text-align: right;
+          padding-left: 22px;
+          border-left: 1px solid var(--cc-line-hair);
+          color: inherit;
+          text-decoration: none;
+          cursor: pointer;
+          transition: opacity 0.2s;
+        }
+        .cc-bay-memento-entry:hover { opacity: 0.78; }
+        .cc-bay-memento-entry .mm-en {
+          font-family: var(--serif-en);
+          font-style: italic;
+          font-size: 17px;
+          font-weight: 300;
+          color: var(--cc-line);
+          letter-spacing: 0.04em;
+          line-height: 1;
+          margin-bottom: 4px;
+        }
+        .cc-bay-memento-entry .mm-en .arrow {
+          font-style: normal;
+          font-family: var(--mono);
+          font-size: 11px;
+          color: var(--text-mute);
+          margin-left: 4px;
+          vertical-align: 2px;
+        }
+        .cc-bay-memento-entry .mm-zh {
+          font-family: var(--serif);
+          font-size: 11px;
+          letter-spacing: 0.32em;
+          color: var(--text-soft);
+          margin-bottom: 10px;
+          font-weight: 300;
+        }
+        .cc-bay-memento-entry .mm-counts {
+          display: flex;
+          justify-content: flex-end;
+          gap: 14px;
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.22em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+        }
+        .cc-bay-memento-entry .mm-counts b {
+          color: var(--cc-line);
+          font-weight: 400;
+          font-family: var(--serif-en);
+          font-size: 13px;
+          letter-spacing: 0.02em;
+          margin-left: 6px;
+          vertical-align: -1px;
+        }
+
+        /* ───── 段落标题（回廊 / 对话） ───── */
+        .cc-bay-section { margin-bottom: 36px; }
+        .cc-bay-section:last-child { margin-bottom: 4px; }
+        .cc-bay-section-head {
+          display: flex;
+          align-items: baseline;
+          gap: 12px;
+          margin-bottom: 22px;
+        }
+        .cc-bay-section-head .zh {
+          font-family: var(--serif);
+          font-size: 13px;
+          font-weight: 400;
+          letter-spacing: 0.36em;
+          color: var(--text-warm);
+        }
+        .cc-bay-section-head .en {
+          font-family: var(--serif-en);
+          font-style: italic;
+          font-size: 12px;
+          font-weight: 300;
+          color: var(--text-mute);
+          letter-spacing: 0.08em;
+        }
+        .cc-bay-section-head .rule {
+          flex: 1;
+          height: 1px;
+          background: var(--cc-line-hair);
+          margin: 0 4px;
+        }
+        .cc-bay-section-head .meta {
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.24em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+        }
+
+        /* ───── 织 · 回廊 ───── 两个声音在对话；中线为时间脉 ───── */
+        .cc-bay-zhi-list {
+          position: relative;
+          display: grid;
+          grid-template-columns: 1fr 24px 1fr;
+          column-gap: 0;
+          row-gap: 24px;
+          padding: 6px 0 10px;
+          list-style: none;
+        }
+        .cc-bay-zhi-list::before {
+          content: '';
+          position: absolute;
+          top: 0; bottom: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          border-left: 1px dashed var(--cc-line-hair);
+        }
+        /* 日期分割 · 跨日时插入小节点 */
+        .cc-bay-zhi-list .zhi-day {
+          grid-column: 1 / -1;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.28em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+          margin: 6px 0 2px;
+        }
+        .cc-bay-zhi-list .zhi-day::before,
+        .cc-bay-zhi-list .zhi-day::after {
+          content: '';
+          flex: 1;
+          height: 1px;
+          background: var(--cc-line-hair);
+        }
+        .cc-bay-zhi-list .zhi-day b {
+          font-family: var(--serif);
+          font-weight: 400;
+          color: var(--text-soft);
+          letter-spacing: 0.3em;
+        }
+
+        .zhi-row {
+          display: contents;
+        }
+        .zhi-body {
+          min-width: 0;
+          padding-top: 1px;
+        }
+        .zhi-dot {
+          position: relative;
+          width: 6px; height: 6px;
+          border-radius: 50%;
+          background: var(--cc-line);
+          justify-self: center;
+          align-self: start;
+          margin-top: 8px;
+          box-shadow:
+            0 0 0 3px rgba(15, 15, 20, 0.55),
+            0 0 10px rgba(250, 229, 179, 0.6);
+        }
+        .zhi-row.silicon .zhi-dot {
+          background: var(--silicon-tint);
+          box-shadow:
+            0 0 0 3px rgba(15, 15, 20, 0.55),
+            0 0 10px rgba(206, 224, 240, 0.5);
+        }
+        .zhi-spacer { /* empty grid cell, holds layout */ }
+
+        /* 碳基 → 左侧；硅基 → 右侧 */
+        .zhi-row.carbon  .zhi-body   { grid-column: 1; text-align: right; padding-right: 14px; }
+        .zhi-row.carbon  .zhi-dot    { grid-column: 2; }
+        .zhi-row.carbon  .zhi-spacer { grid-column: 3; }
+        .zhi-row.silicon .zhi-spacer { grid-column: 1; }
+        .zhi-row.silicon .zhi-dot    { grid-column: 2; }
+        .zhi-row.silicon .zhi-body   { grid-column: 3; text-align: left; padding-left: 14px; }
+
+        .zhi-meta {
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.22em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+          margin-bottom: 6px;
+          display: flex;
+          gap: 8px;
+        }
+        .zhi-row.carbon  .zhi-meta { justify-content: flex-end; }
+        .zhi-row.silicon .zhi-meta { justify-content: flex-start; }
+        .zhi-meta .who   { color: var(--carbon-tint); font-family: var(--serif); letter-spacing: 0.3em; }
+        .zhi-row.silicon .zhi-meta .who { color: var(--silicon-tint); }
+        .zhi-meta .sep   { opacity: 0.4; }
+
+        .zhi-text {
+          font-family: var(--serif);
+          font-size: 14.5px;
+          font-weight: 300;
+          line-height: 1.72;
+          color: var(--text-warm);
+          letter-spacing: 0.01em;
+          text-wrap: pretty;
+        }
+        .zhi-text em {
+          font-style: normal;
+          color: var(--cc-line);
+        }
+        .zhi-row.silicon .zhi-text em { color: var(--silicon-tint); }
+        .zhi-tag {
+          display: inline-block;
+          margin-top: 8px;
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.22em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+          padding: 2px 8px;
+          border: 1px solid var(--cc-line-hair);
+          border-radius: 999px;
+        }
+
+        /* ───── 对话历史 · 完整流 ───── */
+        .cc-bay-history {
+          display: flex;
+          flex-direction: column;
+          gap: 26px;
+        }
+        .cc-bay-history .session {
+          padding-top: 2px;
+        }
+        .cc-bay-history .session-head {
+          display: flex;
+          align-items: baseline;
+          gap: 12px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid var(--cc-line-hair);
+          margin-bottom: 14px;
+        }
+        .cc-bay-history .session-head .ses-zh {
+          font-family: var(--serif);
+          font-size: 12.5px;
+          letter-spacing: 0.32em;
+          color: var(--text-soft);
+        }
+        .cc-bay-history .session-head .ses-time {
+          font-family: var(--mono);
+          font-size: 10px;
+          letter-spacing: 0.24em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+        }
+        .cc-bay-history .session-head .ses-meta {
+          margin-left: auto;
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.22em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+        }
+        .cc-bay-history .msgs {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .cc-bay-history .msg {
+          display: grid;
+          grid-template-columns: 36px 56px 1fr;
+          gap: 14px;
+          align-items: baseline;
+        }
+        .cc-bay-history .msg .who {
+          font-family: var(--serif);
+          font-size: 11px;
+          letter-spacing: 0.28em;
+          color: var(--text-soft);
+          text-align: right;
+        }
+        .cc-bay-history .msg.cc .who { color: var(--cc-line); }
+        .cc-bay-history .msg.me .who { color: var(--text-soft); }
+        .cc-bay-history .msg .time {
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.18em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+        }
+        .cc-bay-history .msg .text {
+          font-family: var(--serif);
+          font-size: 14px;
+          font-weight: 300;
+          line-height: 1.72;
+          color: var(--text-warm);
+          letter-spacing: 0.01em;
+          text-wrap: pretty;
+          margin: 0;
+        }
+        .cc-bay-history .msg.me .text {
+          color: rgba(250, 241, 220, 0.78);
+        }
+
+        /* 对话历史空态（尚未启程） */
+        .cc-bay-history-empty {
+          text-align: center;
+          padding: 48px 0 24px;
+          color: var(--text-mute);
+        }
+        .cc-bay-history-empty-zh {
+          font-family: var(--serif);
+          font-size: 14px;
+          letter-spacing: 0.32em;
+          color: var(--text-soft);
+          margin-bottom: 4px;
+        }
+        .cc-bay-history-empty-en {
+          font-family: var(--serif-en);
+          font-style: italic;
+          font-size: 11px;
+          letter-spacing: 0.06em;
+          color: var(--text-mute);
+          margin-bottom: 10px;
+        }
+        .cc-bay-history-empty-hint {
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.22em;
+          color: var(--text-mute);
+        }
+
+        /* 折叠更早 · 占位入口（CC 接回时再展开） */
+        .cc-bay-history .more {
+          align-self: flex-start;
+          margin-top: 4px;
+          font-family: var(--mono);
+          font-size: 10px;
+          letter-spacing: 0.28em;
+          color: var(--text-mute);
+          text-transform: uppercase;
+          background: none;
+          border: none;
+          padding: 6px 0;
+          cursor: pointer;
+        }
+        .cc-bay-history .more:hover { color: var(--cc-line); }
+        .cc-bay-history .more::before {
+          content: '— ';
+          opacity: 0.5;
+        }
+
+        /* prefers-reduced-motion */
+        @media (prefers-reduced-motion: reduce) {
+          .cc-bay-ink .ink-ring,
+          .cc-bay-ink .ink-core,
+          .pulse-track { animation: none; opacity: 0.5; }
+        }
+
+        /* ───── 织未连接 / 回廊空状态 ───── */
+        .cc-bay-zhi-list .zhi-empty {
+          grid-column: 1 / -1;
+          text-align: center;
+          padding: 32px 0 24px;
+          color: var(--text-mute);
+        }
+        .cc-bay-zhi-list .zhi-empty-zh {
+          font-family: var(--serif);
+          font-size: 14px;
+          font-weight: 300;
+          letter-spacing: 0.32em;
+          color: var(--text-soft);
+          margin-bottom: 4px;
+        }
+        .cc-bay-zhi-list .zhi-empty-en {
+          font-family: var(--serif-en);
+          font-style: italic;
+          font-size: 11px;
+          letter-spacing: 0.06em;
+          color: var(--text-mute);
+          margin-bottom: 12px;
+        }
+        .cc-bay-zhi-list .zhi-empty-hint {
+          font-family: var(--mono);
+          font-size: 9.5px;
+          letter-spacing: 0.22em;
+          color: var(--text-mute);
+          margin-bottom: 14px;
+        }
+        .cc-bay-zhi-list .zhi-empty-retry {
+          background: transparent;
+          border: 1px solid var(--cc-line-soft);
+          color: var(--cc-line);
+          padding: 6px 18px;
+          font-family: var(--mono);
+          font-size: 10px;
+          letter-spacing: 0.22em;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .cc-bay-zhi-list .zhi-empty-retry:hover {
+          background: var(--cc-fill);
+          border-color: var(--cc-line);
+        }
+
+        /* ───── 能触 · CC skill 列表（fork 接口 · 默认隐藏） ───── */
+        .cc-bay-skills-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+        .cc-bay-skills-list li { margin: 0; }
+        .cc-bay-skill {
+          background: transparent;
+          border: 1px solid var(--cc-line-hair);
+          color: var(--text-soft);
+          font-family: var(--serif);
+          font-size: 12.5px;
+          font-weight: 300;
+          letter-spacing: 0.18em;
+          padding: 8px 18px;
+          border-radius: 22px;
+          cursor: pointer;
+          transition: all 0.25s ease;
+        }
+        .cc-bay-skill:hover {
+          background: var(--cc-fill);
+          border-color: var(--cc-line-soft);
+          color: var(--cc-line);
+        }
+      </style>
+
+      <!-- ═════ Demo 脚本 · CC 接回后删除 ═════
+           点 "在听" 状态字可循环切换 4 种状态，看心率波节奏变化。
+           CC 接回时：直接 setAttribute('data-state', 'thinking') 即可。 -->
+      <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          const states = [
+            { key: 'listening', zh: '在听',  en: 'listening', tag: 'ink at rest' },
+            { key: 'thinking',  zh: '思考',  en: 'thinking',  tag: 'ripples gather' },
+            { key: 'writing',   zh: '写入',  en: 'writing',   tag: 'pen on paper' },
+            { key: 'silent',    zh: '静默',  en: 'silent',    tag: 'still water' },
+          ];
+          let idx = 0;
+          const amb = document.querySelector('#panel-cc .cc-bay-ambience');
+          if (!amb) return;
+          amb.addEventListener('click', () => {
+            idx = (idx + 1) % states.length;
+            const s = states[idx];
+            amb.setAttribute('data-state', s.key);
+            amb.querySelector('[data-state-zh]').textContent = s.zh;
+            amb.querySelector('[data-state-en]').textContent = s.en;
+            amb.querySelector('[data-state-tag]').textContent = s.tag;
+          });
+        });
+      </script>
+
+      <!-- ═════ 记忆体系注入接口 · fork 者请看这里 ═════
+        默认：作者用的 Memento 体系（~/Memento · outward/inward 双轨）
+
+        Fork 者：在你的 init 阶段（panel-cc render 前）设置 window.SOULCORE_MEMORY_SYSTEM = {
+          name_en: 'YourSystem',          // 显示名（英）
+          name_zh: '你的记忆体系',         // 显示名（中）
+          metrics: [                       // 计数器 1-2 个
+            { label: 'cards', key: 'cards' },
+            { label: 'links', key: 'links' },
+          ],
+          loadCounts: async () => ({ cards: 42, links: 17 }),  // 返回 { key: count }
+          onClick: (e) => {                // 点击行为
+            e.preventDefault();
+            // 例：window.__TAURI__.opener.openUrl('obsidian://open?vault=YourVault');
+          },
+        };
+
+        没设的话用 Memento 默认（counts 走 placeholder 12/8，onClick log 提示）。
+      -->
+      <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          const DEFAULT = {
+            name_en: 'Memento',
+            name_zh: '形状沉淀',
+            metrics: [
+              { label: 'outward', key: 'outward' },
+              { label: 'inward',  key: 'inward'  },
+            ],
+            loadCounts: async () => {
+              // 默认实现：调 Rust memento_counts 扫 ~/Memento/middle/entries/
+              try {
+                const t = window.__TAURI__;
+                if (t?.core?.invoke) {
+                  const r = await t.core.invoke('memento_counts');
+                  if (r && r.available) return { outward: r.outward, inward: r.inward };
+                }
+              } catch (e) {
+                console.warn('[memento_counts] tauri invoke failed:', e);
+              }
+              return {};  // Memento 目录不存在时返回空 → counts 显示 "—"
+            },
+            onClick: (e) => {
+              e.preventDefault();
+              console.log('[memory-entry] 默认 onClick · fork 者可覆盖（建议打开你的 vault / URL / 自建视图）');
+            },
+          };
+          const config = (typeof window.SOULCORE_MEMORY_SYSTEM === 'object' && window.SOULCORE_MEMORY_SYSTEM) || DEFAULT;
+
+          const entry  = document.getElementById('cc-bay-memory-entry');
+          if (!entry) return;
+          const nameEn = document.getElementById('cc-bay-memory-name-en');
+          const nameZh = document.getElementById('cc-bay-memory-name-zh');
+          const counts = document.getElementById('cc-bay-memory-counts');
+
+          if (nameEn) nameEn.textContent = config.name_en || 'Memento';
+          if (nameZh) nameZh.textContent = config.name_zh || '形状沉淀';
+          if (counts && Array.isArray(config.metrics) && config.metrics.length) {
+            counts.innerHTML = config.metrics.map(function (m) {
+              return '<span><span class="mm-count-label">' + m.label + '</span><b data-metric="' + m.key + '">—</b></span>';
+            }).join('');
+          }
+          entry.setAttribute('data-system', (config.name_en || 'memento').toLowerCase().replace(/\s+/g, '-'));
+          entry.addEventListener('click', config.onClick || DEFAULT.onClick);
+
+          // 异步加载 counts（fork 者实现 loadCounts 决定真实值）
+          (async () => {
+            try {
+              const data = config.loadCounts ? await config.loadCounts() : {};
+              counts.querySelectorAll('[data-metric]').forEach(function (el) {
+                const k = el.getAttribute('data-metric');
+                el.textContent = (data[k] !== undefined && data[k] !== null) ? data[k] : '—';
+              });
+            } catch (e) {
+              console.warn('[memory-entry] loadCounts failed:', e);
+            }
+          })();
+        });
+      </script>
+
+      <!-- ═════ CC Skill 列表注入接口 · fork 者请看这里 ═════
+        默认：SOULCORE_CC_SKILLS 未设 → skill section 保持 hidden（保持克制）
+
+        Fork 者：设置 window.SOULCORE_CC_SKILLS = {
+          list: async () => [
+            { id: 'diary',      label: '日记', hint: '随便聊一段，沉淀进日记' },
+            { id: 'introspect', label: '内观', hint: '记一段身体觉察' },
+          ],
+          onSelect: (skill) => {
+            // 例：把 /<id> 注入到 cc-input
+            const input = document.getElementById('cc-input');
+            if (input) { input.value = '/' + skill.id + ' '; input.focus(); }
+          },
+        };
+      -->
+      <script>
+        document.addEventListener('DOMContentLoaded', async function () {
+          const config = (typeof window.SOULCORE_CC_SKILLS === 'object' && window.SOULCORE_CC_SKILLS) || null;
+          const section = document.getElementById('cc-bay-skills-section');
+          if (!section || !config || typeof config.list !== 'function') return;  // 保持 hidden
+          try {
+            const skills = await config.list();
+            if (!Array.isArray(skills) || !skills.length) return;
+            const listEl = document.getElementById('cc-bay-skills-list');
+            const metaEl = document.getElementById('cc-bay-skills-meta');
+            const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+            listEl.innerHTML = skills.map(s =>
+              '<li><button type="button" class="cc-bay-skill" data-skill-id="' + esc(s.id) + '" title="' + esc(s.hint || '') + '">' + esc(s.label || s.id) + '</button></li>'
+            ).join('');
+            if (metaEl) metaEl.textContent = skills.length + ' 触';
+            listEl.querySelectorAll('.cc-bay-skill').forEach(btn => {
+              btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-skill-id');
+                const skill = skills.find(s => s.id === id);
+                if (skill && typeof config.onSelect === 'function') config.onSelect(skill);
+              });
+            });
+            section.hidden = false;
+          } catch (e) {
+            console.warn('[cc-skills] load failed:', e);
+          }
+        });
+      </script>
+
+      <!-- ═════ 织 · 回廊渲染（接 ~/repos/zhi/api/entries 真实数据） ═════
+        - zhiHealth / zhiList 是文件后段定义的全局函数；DOMContentLoaded 时已 ready
+        - 织未连接 → empty state + ↻ retry button
+        - 织 0 条 → empty state 提示落第一笔
+        - 有数据 → 按日分组、carbon 左 / silicon 右渲染（沿用现有 .zhi-row CSS）
+      -->
+      <script>
+        (function () {
+          function escHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+          }
+          function dayLabel(dateStr, todayStr) {
+            if (dateStr === todayStr) return 'today';
+            // 昨天
+            const d = new Date(dateStr + 'T00:00:00');
+            const t = new Date(todayStr + 'T00:00:00');
+            const diffDays = Math.round((t - d) / 86400000);
+            if (diffDays === 1) return 'yesterday';
+            const [, m, day] = dateStr.split('-');
+            return m + '/' + day;
+          }
+          function whoFor(author) {
+            // 复用全局 zhiAuthorName 如果可用，否则 fallback
+            if (typeof zhiAuthorName === 'function') return zhiAuthorName(author);
+            return author === 'silicon' ? 'CC' : '你';
+          }
+          async function bootCcZhi() {
+            const list = document.getElementById('cc-bay-zhi-list');
+            const meta = document.getElementById('cc-bay-zhi-meta');
+            if (!list) return;
+
+            list.innerHTML = '<li class="zhi-empty"><div class="zhi-empty-zh">织 · 检查中…</div><div class="zhi-empty-en">connecting</div></li>';
+            if (meta) meta.textContent = '碳 · 硅 双声';
+
+            // 织 server 探测
+            let ok = false;
+            try { ok = (typeof zhiHealth === 'function') ? await zhiHealth() : false; } catch { ok = false; }
+
+            if (!ok) {
+              list.innerHTML =
+                '<li class="zhi-empty">' +
+                  '<div class="zhi-empty-zh">织未连接</div>' +
+                  '<div class="zhi-empty-en">zhi not running</div>' +
+                  '<div class="zhi-empty-hint">在 ~/repos/zhi 跑 bun run dev 后点 ↻</div>' +
+                  '<button type="button" class="zhi-empty-retry" id="cc-zhi-retry">↻ 重连</button>' +
+                '</li>';
+              const retry = document.getElementById('cc-zhi-retry');
+              if (retry) retry.addEventListener('click', bootCcZhi);
+              if (meta) meta.textContent = '织 · 未连';
+              return;
+            }
+
+            // 拉条目
+            let all = [];
+            try { all = (typeof zhiList === 'function') ? await zhiList() : []; } catch { all = []; }
+
+            // 最近 7 天
+            const cutoff = new Date(Date.now() - 7 * 86400000);
+            const cutoffStr = cutoff.toISOString().slice(0, 10);
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const recent = (Array.isArray(all) ? all : []).filter(e => e && e.date && e.date >= cutoffStr);
+
+            if (!recent.length) {
+              list.innerHTML =
+                '<li class="zhi-empty">' +
+                  '<div class="zhi-empty-zh">回廊空</div>' +
+                  '<div class="zhi-empty-en">no notes yet</div>' +
+                  '<div class="zhi-empty-hint">在日记 panel 落第一笔</div>' +
+                '</li>';
+              if (meta) meta.textContent = '碳 · 硅 双声 · 0';
+              return;
+            }
+
+            // 按 createdAt 倒序
+            recent.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+
+            // 按日分组（保持倒序）
+            const byDate = {};
+            for (const e of recent) (byDate[e.date] = byDate[e.date] || []).push(e);
+            const dates = Object.keys(byDate).sort().reverse();
+
+            const html = dates.map(date => {
+              const label = dayLabel(date, todayStr);
+              const head = '<li class="zhi-day"><b>' + escHtml(date.slice(5).replace('-', '/')) + '</b> · ' + escHtml(label) + '</li>';
+              const rows = byDate[date].map(e => {
+                const author = e.author === 'silicon' ? 'silicon' : 'carbon';
+                const who = whoFor(author);
+                const time = (e.createdAt || '').slice(11, 16) || '';
+                const txt = escHtml(e.content || '').replace(/\n/g, '<br>');
+                if (author === 'carbon') {
+                  return '<li class="zhi-row carbon">' +
+                    '<div class="zhi-body">' +
+                      '<div class="zhi-meta"><span class="who">' + escHtml(who) + '</span><span class="sep">·</span><span>' + escHtml(time) + '</span></div>' +
+                      '<div class="zhi-text">' + txt + '</div>' +
+                    '</div>' +
+                    '<span class="zhi-dot"></span><span class="zhi-spacer"></span>' +
+                  '</li>';
+                } else {
+                  return '<li class="zhi-row silicon">' +
+                    '<span class="zhi-spacer"></span><span class="zhi-dot"></span>' +
+                    '<div class="zhi-body">' +
+                      '<div class="zhi-meta"><span>' + escHtml(time) + '</span><span class="sep">·</span><span class="who">' + escHtml(who) + '</span></div>' +
+                      '<div class="zhi-text">' + txt + '</div>' +
+                    '</div>' +
+                  '</li>';
+                }
+              }).join('');
+              return head + rows;
+            }).join('');
+
+            list.innerHTML = html;
+            if (meta) meta.textContent = '碳 · 硅 双声 · ' + recent.length;
+          }
+
+          // 初次启动 + 切到 panel-cc 时刷新
+          document.addEventListener('DOMContentLoaded', () => {
+            bootCcZhi();
+            document.querySelectorAll('.nav-item[data-panel="cc"]').forEach(item => {
+              item.addEventListener('click', () => setTimeout(bootCcZhi, 80));
+            });
+          });
+        })();
+      </script>
+
+      <!-- ═════ 头排 ═════ -->
+      <div class="cc-bay-head">
+        <div class="cc-bay-ambience" data-state="listening">
+          <!-- 墨在水中扩散 · listening 状态 -->
+          <svg class="cc-bay-ink" viewBox="-12 -28 96 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle class="ink-ring r1" cx="0" cy="0" r="6"></circle>
+            <circle class="ink-ring r2" cx="0" cy="0" r="6"></circle>
+            <circle class="ink-ring r3" cx="0" cy="0" r="6"></circle>
+            <circle class="ink-core"    cx="0" cy="0" r="1.6"></circle>
+          </svg>
+          <div class="cc-bay-state">
+            <div class="state-zh" data-state-zh>在&nbsp;听</div>
+            <div class="state-en"><em data-state-en>listening</em> · <span data-state-tag>ink at rest</span></div>
+          </div>
+        </div>
+
+        <!-- ═════ 心率 · 与 .cc-bay-ambience[data-state] 同步 ═════ -->
+        <div class="cc-bay-pulse" aria-hidden="true">
+          <svg viewBox="0 0 1200 56" preserveAspectRatio="none">
+            <!-- baseline 极淡参考线，让波形有锚 -->
+            <line class="pulse-base" x1="0" y1="28" x2="1200" y2="28"></line>
+
+            <!-- LISTENING · 周期 600 · 缓沉起伏 + 一抹小跳 -->
+            <g class="pulse-track listening">
+              <path d="M -10 28 Q 50 23 100 28 T 200 28 T 280 28 L 296 28 L 302 24 L 308 32 L 314 27 L 320 28 L 400 28 Q 470 33 540 28 T 600 28 Q 650 23 700 28 T 800 28 T 880 28 L 896 28 L 902 24 L 908 32 L 914 27 L 920 28 L 1000 28 Q 1070 33 1140 28 T 1200 28"/>
+            </g>
+
+            <!-- THINKING · 周期 400 · ECG 节律，三连小峰一大峰 -->
+            <g class="pulse-track thinking">
+              <path d="M -10 28 L 60 28 L 70 25 L 80 31 L 90 28 L 140 28 L 148 22 L 156 34 L 164 28 L 220 28 L 232 14 L 240 42 L 248 24 L 256 28 L 340 28 L 350 26 L 360 30 L 370 28 L 400 28
+                       L 460 28 L 470 25 L 480 31 L 490 28 L 540 28 L 548 22 L 556 34 L 564 28 L 620 28 L 632 14 L 640 42 L 648 24 L 656 28 L 740 28 L 750 26 L 760 30 L 770 28 L 800 28
+                       L 860 28 L 870 25 L 880 31 L 890 28 L 940 28 L 948 22 L 956 34 L 964 28 L 1020 28 L 1032 14 L 1040 42 L 1048 24 L 1056 28 L 1140 28 L 1150 26 L 1160 30 L 1170 28 L 1210 28"/>
+            </g>
+
+            <!-- WRITING · 周期 500 · 整齐柔波（笔触节拍） -->
+            <g class="pulse-track writing">
+              <path d="M -10 28 Q 25 22 50 28 Q 75 34 100 28 Q 125 22 150 28 Q 175 34 200 28 Q 225 22 250 28 Q 275 34 300 28 Q 325 22 350 28 Q 375 34 400 28 Q 425 22 450 28 Q 475 34 500 28
+                       Q 525 22 550 28 Q 575 34 600 28 Q 625 22 650 28 Q 675 34 700 28 Q 725 22 750 28 Q 775 34 800 28 Q 825 22 850 28 Q 875 34 900 28 Q 925 22 950 28 Q 975 34 1000 28
+                       Q 1025 22 1050 28 Q 1075 34 1100 28 Q 1125 22 1150 28 Q 1175 34 1200 28 Q 1225 22 1250 28"/>
+            </g>
+
+            <!-- SILENT · 周期 800 · 几乎平直，偶有微涟 -->
+            <g class="pulse-track silent">
+              <path d="M -10 28 L 380 28 Q 388 26 396 28 Q 404 30 412 28 L 760 28 Q 772 27 784 28 Q 796 29 808 28 L 1180 28 Q 1188 26 1196 28 Q 1204 30 1210 28"/>
+            </g>
+          </svg>
+        </div>
+
+        <!-- 
+          Memento 入口 · fork 者接口
+          默认接到作者用的 Memento 体系（~/Memento）。
+          Fork 时换成你的记忆体系（mem0 / cognee / Obsidian / 自建 vault 等），
+          只需在 panel-cc 加载前设置 window.SOULCORE_MEMORY_SYSTEM = {...}
+          完整接口见下方 init script 注释（搜 SOULCORE_MEMORY_SYSTEM）。
+        -->
+        <a class="cc-bay-memento-entry" id="cc-bay-memory-entry" href="#" data-system="memento">
+          <div class="mm-en">
+            <span id="cc-bay-memory-name-en">Memento</span>
+            <span class="arrow">↗</span>
+          </div>
+          <div class="mm-zh" id="cc-bay-memory-name-zh">形状沉淀</div>
+          <div class="mm-counts" id="cc-bay-memory-counts">
+            <span><span class="mm-count-label">outward</span><b data-metric="outward">—</b></span>
+            <span><span class="mm-count-label">inward</span><b data-metric="inward">—</b></span>
+          </div>
+        </a>
       </div>
+
+      <!-- ═════ 能触 · CC skill 列表（fork 接口；SOULCORE_CC_SKILLS 未设则保持 hidden） ═════ -->
+      <section class="cc-bay-section cc-bay-skills-section" id="cc-bay-skills-section" hidden>
+        <div class="cc-bay-section-head">
+          <span class="zh">能&nbsp;触</span>
+          <span class="en">Skills · invokable</span>
+          <span class="rule"></span>
+          <span class="meta" id="cc-bay-skills-meta">—</span>
+        </div>
+        <ul class="cc-bay-skills-list" id="cc-bay-skills-list"></ul>
+      </section>
+
+      <!-- ═════ 织 · 回廊 ═════ -->
+      <section class="cc-bay-section">
+        <div class="cc-bay-section-head">
+          <span class="zh">回&nbsp;廊</span>
+          <span class="en">Zhi · last seven days</span>
+          <span class="rule"></span>
+          <span class="meta" id="cc-bay-zhi-meta">碳 · 硅 双声</span>
+        </div>
+
+        <ol class="cc-bay-zhi-list" id="cc-bay-zhi-list">
+          <li class="zhi-empty">
+            <div class="zhi-empty-zh">织 · 检查中…</div>
+            <div class="zhi-empty-en">connecting</div>
+          </li>
+        </ol>
+      </section>
+
+      <!-- ═════ 对话 · 完整流 ═════ -->
+      <section class="cc-bay-section">
+        <div class="cc-bay-section-head">
+          <span class="zh">对&nbsp;话</span>
+          <span class="en">Full transcript · reverse chronological</span>
+          <span class="rule"></span>
+          <span class="meta">尚未启程</span>
+        </div>
+
+        <!-- 对话历史 · 后续 CC 接回时直接读 ~/.claude/projects/-Users-<USER>--soul-core-cc/*.jsonl 替换内容 -->
+        <div class="cc-bay-history">
+          <div class="cc-bay-history-empty">
+            <div class="cc-bay-history-empty-zh">回廊静</div>
+            <div class="cc-bay-history-empty-en">no transcript yet</div>
+            <div class="cc-bay-history-empty-hint">和章鱼说第一句 · 这里会留下痕迹</div>
+          </div>
+        </div>
+      </section>
     </div>
 
     <!-- 给 JS 的 header-date 容器（保留 id，不显示） -->
@@ -2165,6 +3640,10 @@ body:has(.onboard-modal.visible) .window {
       <div class="onboard-cc-bubble">
         <div class="onboard-cc-author">silicon</div>
         <div class="onboard-cc-text" id="onboard-cc-text"></div>
+        <div class="onboard-cc-pager" id="onboard-cc-pager" hidden>
+          <span class="onboard-cc-pager-indicator" id="onboard-cc-pager-indicator"></span>
+          <button class="onboard-cc-pager-next" id="onboard-cc-pager-next">翻一页 →</button>
+        </div>
       </div>
       <div class="onboard-user-area">
         <textarea class="onboard-user-input" id="onboard-user-input" placeholder="说点什么…" rows="3"></textarea>
@@ -2174,14 +3653,39 @@ body:has(.onboard-modal.visible) .window {
         </div>
       </div>
     </div>
+    <div class="onboard-prompt" id="onboard-prompt" hidden>
+      <div class="onboard-prompt-author">silicon</div>
+      <div class="onboard-prompt-msg" id="onboard-prompt-msg"></div>
+      <div class="onboard-prompt-actions">
+        <button class="onboard-prompt-secondary" id="onboard-prompt-secondary"></button>
+        <button class="onboard-prompt-primary" id="onboard-prompt-primary"></button>
+      </div>
+    </div>
     <div class="onboard-footnote">
       Step <span id="onboard-step-current">1</span> · 8 — 你和你的 CC 一起为这个 app 填心
     </div>
   </div>
 </div>
 
-<!-- dev 触发器（chunk B 预览用；chunk C 改成首次启动自动 / 测试包专属按钮） -->
-<button class="onboard-debug-trigger" id="onboard-debug-trigger" title="预览 onboarding modal · dev only">⊕</button>
+<!-- dashboard widget 召唤入口 · 右上角（⌘D 也可召唤） -->
+<button class="dashboard-trigger" id="dashboard-trigger" title="召唤仪表盘小端 · ⌘D">▤</button>
+
+<!-- ═══════════ soul-modal · 通用 confirm/alert/prompt 容器 ═══════════
+     Tauri v2 不支持 native alert/confirm/prompt（红线 #6）。
+     调用 window.soulConfirm / soulAlert / soulPrompt 都返回 Promise。
+     ═════════════════════════════════════════════════════════════════ -->
+<div class="soul-modal" id="soul-modal" hidden>
+  <div class="soul-modal-overlay"></div>
+  <div class="soul-modal-card">
+    <div class="soul-modal-author">silicon</div>
+    <div class="soul-modal-msg" id="soul-modal-msg"></div>
+    <input class="soul-modal-input" id="soul-modal-input" type="text" hidden>
+    <div class="soul-modal-actions">
+      <button class="soul-modal-secondary" id="soul-modal-secondary"></button>
+      <button class="soul-modal-primary" id="soul-modal-primary"></button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ============= 配置 =============
@@ -2269,6 +3773,19 @@ const STORAGE_KEY = 'zhenyuan_quest_v1';
 // 织桥接状态（提前声明避免 renderJournal/saveJournal TDZ）
 var zhiState = { available: false, entries: [] };
 
+// 长程项目种子（首次启动且 state.long_projects 为空时塞）
+// 默认只塞一个 meta 项目（你正在用的"心舍"本身）——让新装的人有一个 anchor 但不堆 demo
+// 进门后通过 CC 对话增删改（panel-long 顶部「+ 添加项目」/「和 CC 商量」）
+const LONG_PROJECTS_SEED = [
+  { id: 'soul-core', name: '心舍 · 住进来', phase: 'phase 一 · 找形', meta: null, status: 'active',
+    vibe: '住进来 · 把房子住成自己的',
+    sub_tasks: [
+      { id: 'soul-core-1', label: '走完 onboarding 让 CC 看见你', state: 'todo' },
+      { id: 'soul-core-2', label: '在 panel-long 加你自己的长程', state: 'todo' },
+      { id: 'soul-core-3', label: '试试和 CC 商量改这条 vibe',     state: 'todo' },
+    ] },
+];
+
 const defaultState = {
   points: 0,
   totalEarned: 0,
@@ -2281,7 +3798,8 @@ const defaultState = {
   records: { sleep: {}, mood: {} },
   journal: [],
   ledger: [],
-  redeemed: []
+  redeemed: [],
+  long_projects: [],     // 长程 panel · CC 对话 + sub-task 三态切换 · 详见 LONG_PROJECTS_SEED
 };
 
 let state = loadState();
@@ -2302,6 +3820,24 @@ function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (e) { console.error(e); }
 }
+
+// 一次性：long_projects 空时塞种子；并从旧 demo localStorage 迁 sub-task 状态
+(function seedLongProjects() {
+  if (Array.isArray(state.long_projects) && state.long_projects.length > 0) return;
+  // 深拷贝种子，避免共享引用
+  const seed = JSON.parse(JSON.stringify(LONG_PROJECTS_SEED));
+  // 把 soulcore_long_arc_demo 里已存的 sub-task 状态合并到种子里
+  try {
+    const oldDemo = JSON.parse(localStorage.getItem('soulcore_long_arc_demo') || '{}');
+    for (const p of seed) {
+      for (const st of (p.sub_tasks || [])) {
+        if (oldDemo[st.id]) st.state = oldDemo[st.id];
+      }
+    }
+  } catch {}
+  state.long_projects = seed;
+  saveState();
+})();
 
 function todayStr() {
   const d = new Date();
@@ -2739,8 +4275,8 @@ async function saveJournal() {
   showToast(0, toastMsg);
 }
 
-function deleteJournal(idx) {
-  if (!confirm('删除这条日记？')) return;
+async function deleteJournal(idx) {
+  if (!(await soulConfirm({ message: '删除这条日记？', primaryLabel: '删除' }))) return;
   state.journal.splice(idx, 1);
   saveState();
   renderJournal();
@@ -2757,17 +4293,17 @@ function addLedger() {
   renderLedger();
 }
 
-function deleteLedger(idx) {
-  if (!confirm('删除这笔记账？')) return;
+async function deleteLedger(idx) {
+  if (!(await soulConfirm({ message: '删除这笔记账？', primaryLabel: '删除' }))) return;
   state.ledger.splice(idx, 1);
   saveState();
   renderLedger();
 }
 
-function redeem(itemId) {
+async function redeem(itemId) {
   const item = SHOP_ITEMS.find(i => i.id === itemId);
   if (!item || state.points < item.cost) return;
-  if (!confirm(`兑换：${item.name}\n消耗 ${item.cost} 积分？`)) return;
+  if (!(await soulConfirm({ message: `兑换：${item.name}\n消耗 ${item.cost} 积分？`, primaryLabel: '兑换' }))) return;
   state.points -= item.cost;
   state.redeemed.push({ id: itemId, name: item.name, cost: item.cost, date: todayStr() });
   saveState();
@@ -2795,27 +4331,121 @@ document.getElementById('file-input').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = (ev) => {
+  reader.onload = async (ev) => {
     try {
       const data = JSON.parse(ev.target.result);
-      if (!confirm('确认读取存档？当前数据会被覆盖。')) return;
+      if (!(await soulConfirm({ message: '确认读取存档？当前数据会被覆盖。', primaryLabel: '读取' }))) return;
       state = { ...defaultState, ...data };
       saveState();
       renderAll();
-      alert('已读取存档。');
+      await soulAlert({ message: '已读取存档。' });
     } catch (err) {
-      alert('文件格式错误。');
+      await soulAlert({ message: '文件格式错误。' });
     }
   };
   reader.readAsText(file);
 });
 
-function resetAll() {
-  if (!confirm('确认归零？所有数据将被清空，此操作不可撤销。\n建议先导出存档。')) return;
-  if (!confirm('再次确认：真的归零？')) return;
+async function resetAll() {
+  if (!(await soulConfirm({ message: '确认归零？所有数据将被清空，此操作不可撤销。\n建议先导出存档。', primaryLabel: '继续' }))) return;
+  if (!(await soulConfirm({ message: '再次确认：真的归零？', primaryLabel: '归零' }))) return;
   state = { ...defaultState };
   saveState();
   renderAll();
+}
+
+// ============= 长程 panel · 真数据 =============
+
+const LONG_STATE_LABELS = { todo: '', doing: 'doing', done: 'done' };
+const LONG_STATES = ['todo', 'doing', 'done'];
+
+function renderLong() {
+  const list = document.getElementById('long-arc-list');
+  const meta = document.getElementById('long-arc-meta');
+  if (!list) return;
+
+  const projects = Array.isArray(state.long_projects) ? state.long_projects : [];
+  const activeCount = projects.filter(p => p.status !== 'paused').length;
+  const pausedCount = projects.filter(p => p.status === 'paused').length;
+  if (meta) {
+    meta.innerHTML = projects.length === 0
+      ? '尚未落第一笔'
+      : (activeCount > 0 ? `active<b>${activeCount}</b>` : '') + (pausedCount > 0 ? ` · paused<b>${pausedCount}</b>` : '');
+  }
+
+  if (projects.length === 0) {
+    list.innerHTML = `
+      <div class="long-arc-empty">
+        <div class="long-arc-empty-zh">长程是慢的</div>
+        <div class="long-arc-empty-hint">和 CC 商量你养着的那几件事 · 「+ 添加项目」开始</div>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = projects.map(p => {
+    const subTasksHtml = (p.sub_tasks || []).map(st => {
+      const tagHtml = LONG_STATE_LABELS[st.state]
+        ? `<span class="sub-tag">${escapeHtml(LONG_STATE_LABELS[st.state])}</span>`
+        : '';
+      return `<li class="long-arc-sub-task" data-task-id="${escapeHtml(st.id)}" data-state="${escapeHtml(st.state || 'todo')}">
+        <span class="long-arc-sub-glyph"></span>
+        <span>${escapeHtml(st.label)}</span>
+        ${tagHtml}
+      </li>`;
+    }).join('');
+    const metaHtml = p.meta
+      ? `<span class="long-arc-project-meta">${escapeHtml(p.meta)}</span>`
+      : '';
+    const subListHtml = subTasksHtml
+      ? `<ul class="long-arc-sub-list">${subTasksHtml}</ul>`
+      : '';
+    return `<article class="long-arc-project" data-project-id="${escapeHtml(p.id)}" data-status="${escapeHtml(p.status || 'active')}">
+      <div class="long-arc-project-head">
+        <span class="long-arc-project-name">${escapeHtml(p.name)}</span>
+        <span class="long-arc-project-phase">${escapeHtml(p.phase || '')}</span>
+        ${metaHtml}
+      </div>
+      <div class="long-arc-project-vibe">${escapeHtml(p.vibe || '')}</div>
+      ${subListHtml}
+    </article>`;
+  }).join('');
+
+  // sub-task 三态切换 · 直接更新 state.long_projects 并 saveState
+  list.querySelectorAll('.long-arc-sub-task').forEach(item => {
+    item.addEventListener('click', () => {
+      const projectId = item.closest('.long-arc-project')?.dataset.projectId;
+      const taskId = item.dataset.taskId;
+      if (!projectId || !taskId) return;
+      const project = state.long_projects.find(p => p.id === projectId);
+      const task = project?.sub_tasks?.find(t => t.id === taskId);
+      if (!task) return;
+      const cur = task.state || 'todo';
+      task.state = LONG_STATES[(LONG_STATES.indexOf(cur) + 1) % LONG_STATES.length];
+      saveState();
+      renderLong();
+    });
+  });
+}
+
+// CC 对话入口按钮：预填 cc-input 引导用户和 CC 商量
+function bindLongActions() {
+  document.querySelectorAll('#panel-long .long-arc-action').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.longAction;
+      const ccInput = document.getElementById('cc-input');
+      if (!ccInput) return;
+      const seed = action === 'add'
+        ? '帮我加一个长程项目，是关于'
+        : '聊聊我的长程——';
+      ccInput.value = seed;
+      ccInput.focus();
+      // 光标停在末尾
+      ccInput.setSelectionRange(ccInput.value.length, ccInput.value.length);
+      // 展开 CC 横栏（如果有 expanded class）
+      const ccBar = document.querySelector('.b-cc');
+      if (ccBar) ccBar.classList.add('expanded');
+    });
+  });
 }
 
 function renderAll() {
@@ -2828,6 +4458,7 @@ function renderAll() {
   renderJournal();
   renderLedger();
   renderShop();
+  renderLong();
 }
 
 // ============= 初始化 =============
@@ -2852,6 +4483,7 @@ document.getElementById('import-btn').addEventListener('click', importData);
 document.getElementById('reset-btn').addEventListener('click', resetAll);
 
 renderAll();
+bindLongActions();
 
 // 每分钟检查一次日期变化（跨日重置）
 setInterval(checkDateChange, 60000);
@@ -2879,6 +4511,36 @@ setInterval(checkDateChange, 60000);
       tauri.window.getCurrentWindow().startDragging();
     } else if (tauri && tauri.core && typeof tauri.core.invoke === 'function') {
       tauri.core.invoke('plugin:window|start_dragging').catch(() => {});
+    }
+  });
+})();
+
+// 仪表盘小端 trigger · 召唤独立 dashboard window
+(function () {
+  const trigger = document.getElementById('dashboard-trigger');
+  if (!trigger) return;
+  let lastVisible = false;
+  async function toggle() {
+    const tauri = window.__TAURI__;
+    const invoke = tauri?.core?.invoke || tauri?.invoke;
+    if (!invoke) return;
+    try {
+      const visible = await invoke('toggle_dashboard');
+      lastVisible = !!visible;
+      trigger.classList.toggle('active', lastVisible);
+    } catch (e) {
+      console.warn('toggle_dashboard failed:', e);
+    }
+  }
+  trigger.addEventListener('click', toggle);
+  // Cmd+D 快捷键召唤 / 收起（注意：Cmd+D 在 macOS 上系统级一般是无主动占用）
+  document.addEventListener('keydown', (e) => {
+    if (e.metaKey && (e.key === 'd' || e.key === 'D') && !e.shiftKey && !e.altKey) {
+      // 避免在 textarea / input 输入「d」时触发
+      const tag = (e.target?.tagName || '').toLowerCase();
+      if (tag === 'textarea' || tag === 'input') return;
+      e.preventDefault();
+      toggle();
     }
   });
 })();
@@ -2973,10 +4635,10 @@ async function zhiInit() {
 }
 
 async function zhiMigrate() {
-  if (!zhiState.available) { alert('织未连接，无法迁移'); return; }
+  if (!zhiState.available) { await soulAlert({ message: '织未连接，无法迁移' }); return; }
   const local = state.journal.filter(e => !e.zhiId);
-  if (!local.length) { alert('本地没有未迁移的日记'); return; }
-  if (!confirm(`确认把 ${local.length} 条本地日记同步到织？\n（已迁移过的不会重复；只迁移未带 zhiId 的本地条目）`)) return;
+  if (!local.length) { await soulAlert({ message: '本地没有未迁移的日记' }); return; }
+  if (!(await soulConfirm({ message: `确认把 ${local.length} 条本地日记同步到织？\n（已迁移过的不会重复；只迁移未带 zhiId 的本地条目）`, primaryLabel: '迁移' }))) return;
   let ok = 0, fail = 0;
   for (const entry of local) {
     const ret = await zhiWrite(entry.text, entry.date);
@@ -2985,15 +4647,15 @@ async function zhiMigrate() {
   }
   saveState();
   await zhiInit();
-  alert(`迁移完成：成功 ${ok} 条，失败 ${fail} 条`);
+  await soulAlert({ message: `迁移完成：成功 ${ok} 条，失败 ${fail} 条` });
 }
 
-function zhiSetNames() {
+async function zhiSetNames() {
   const cur_c = zhiAuthorName('carbon');
   const cur_s = zhiAuthorName('silicon');
-  const c = prompt(`carbon（你）的名字（与织同 key zhi:name:carbon）：`, cur_c);
+  const c = await soulPrompt({ message: 'carbon（你）的名字（与织同 key zhi:name:carbon）', defaultValue: cur_c });
   if (c === null) return;
-  const s = prompt(`silicon（AI）的名字（与织同 key zhi:name:silicon）：`, cur_s);
+  const s = await soulPrompt({ message: 'silicon（AI）的名字（与织同 key zhi:name:silicon）', defaultValue: cur_s });
   if (s === null) return;
   try {
     localStorage.setItem('zhi:name:carbon', c.trim() || '你');
@@ -3218,7 +4880,24 @@ zhiInit();
     const date = (typeof todayStr === 'function') ? todayStr() : new Date().toISOString().slice(0, 10);
     const pts = (typeof state !== 'undefined' ? state.points : 0);
     const streak = (typeof state !== 'undefined' ? state.streak : 0);
-    return `<soul-core-context>panel=${activePanel} · date=${date} · 积分=${pts} · 连续=${streak}日</soul-core-context>\n\n`;
+
+    // panel=long 时多注入：当前 long_projects 简版 + ops 协议
+    let longHint = '';
+    if (activePanel === 'long' && typeof state !== 'undefined' && Array.isArray(state.long_projects)) {
+      const summary = state.long_projects.map(p => ({
+        id: p.id, name: p.name, phase: p.phase, status: p.status || 'active',
+        subs: (p.sub_tasks || []).length
+      }));
+      longHint = `\nlong_projects(简)=${JSON.stringify(summary)}\n` +
+        `如果用户明确想 增/改/删 长程或完成子任务，回复尾加 fence:\n` +
+        `<long-projects-update>[{"op":"add"|"update"|"add_sub_tasks"|"complete_sub_task"|"delete", ...}]</long-projects-update>\n` +
+        `字段：add 用 project={id,name,phase,vibe,status,sub_tasks:[{id,label}],meta?}; ` +
+        `update 用 id+patch={name?,phase?,vibe?,status?,meta?}; ` +
+        `add_sub_tasks 用 id+sub_tasks:[{id,label}]; complete_sub_task 用 id+task_id; delete 用 id。` +
+        `子任务 id 形如 "<project-id>-N"。日常聊天 / 反思不出 fence。`;
+    }
+
+    return `<soul-core-context>panel=${activePanel} · date=${date} · 积分=${pts} · 连续=${streak}日${longHint}</soul-core-context>\n\n`;
   }
 
   // 心舍 CC session UUID 持久化（让所有调用接到同一对话）
@@ -3279,6 +4958,145 @@ zhiInit();
     if (stateEl) stateEl.innerHTML = `<span class="dot"></span>${stateMap[s] || '在听'}`;
   }
 
+  // ── long_projects 协议：从回复里抽 <long-projects-update>[...] </> fence、预览、apply
+  const LONG_FENCE_RE = /<long-projects-update>\s*([\s\S]*?)\s*<\/long-projects-update>/i;
+  function extractLongOps(reply) {
+    if (!reply) return null;
+    const m = reply.match(LONG_FENCE_RE);
+    if (!m) return null;
+    try {
+      const ops = JSON.parse(m[1].trim());
+      return Array.isArray(ops) ? ops : null;
+    } catch (e) {
+      console.warn('[long-ops] fence JSON 解析失败:', e, m[1]);
+      return null;
+    }
+  }
+  function stripLongFence(reply) {
+    return reply.replace(LONG_FENCE_RE, '').trim();
+  }
+  function describeLongOp(op) {
+    if (!op || !op.op) return '（未识别的变更）';
+    const findName = (id) => (state.long_projects?.find(p => p.id === id)?.name) || `id=${id}`;
+    switch (op.op) {
+      case 'add':
+        return `加入新项目「${op.project?.name || '?'}」（${op.project?.phase || '—'}）`;
+      case 'update': {
+        const fields = Object.entries(op.patch || {}).map(([k, v]) => `${k}=${v}`).join(' / ');
+        return `更新「${findName(op.id)}」 · ${fields || '无字段变更'}`;
+      }
+      case 'add_sub_tasks':
+        return `给「${findName(op.id)}」加 ${(op.sub_tasks || []).length} 个子任务`;
+      case 'complete_sub_task': {
+        const project = state.long_projects?.find(p => p.id === op.id);
+        const task = project?.sub_tasks?.find(t => t.id === op.task_id);
+        return `完成子任务「${task?.label || op.task_id}」（${findName(op.id)}）`;
+      }
+      case 'delete':
+        return `删除项目「${findName(op.id)}」`;
+      default:
+        return `未知 op: ${op.op}`;
+    }
+  }
+  function applyLongOps(ops) {
+    if (!Array.isArray(state.long_projects)) state.long_projects = [];
+    let applied = 0, failed = 0;
+    for (const op of ops) {
+      try {
+        switch (op?.op) {
+          case 'add': {
+            if (!op.project || !op.project.id || !op.project.name) { failed++; break; }
+            // 去重 id（避免覆盖既有项目）
+            if (state.long_projects.some(p => p.id === op.project.id)) {
+              op.project.id = op.project.id + '-' + Date.now().toString(36).slice(-4);
+            }
+            const proj = {
+              id: op.project.id,
+              name: op.project.name,
+              phase: op.project.phase || '',
+              vibe: op.project.vibe || '',
+              status: op.project.status === 'paused' ? 'paused' : 'active',
+              meta: op.project.meta || null,
+              sub_tasks: Array.isArray(op.project.sub_tasks)
+                ? op.project.sub_tasks.map((s, i) => ({
+                    id: s.id || `${op.project.id}-${i + 1}`,
+                    label: s.label || '',
+                    state: s.state || 'todo'
+                  }))
+                : []
+            };
+            state.long_projects.push(proj);
+            applied++;
+            break;
+          }
+          case 'update': {
+            const p = state.long_projects.find(x => x.id === op.id);
+            if (!p) { failed++; break; }
+            const patch = op.patch || {};
+            if (patch.name !== undefined)   p.name = patch.name;
+            if (patch.phase !== undefined)  p.phase = patch.phase;
+            if (patch.vibe !== undefined)   p.vibe = patch.vibe;
+            if (patch.meta !== undefined)   p.meta = patch.meta || null;
+            if (patch.status !== undefined) p.status = patch.status === 'paused' ? 'paused' : 'active';
+            applied++;
+            break;
+          }
+          case 'add_sub_tasks': {
+            const p = state.long_projects.find(x => x.id === op.id);
+            if (!p) { failed++; break; }
+            if (!Array.isArray(p.sub_tasks)) p.sub_tasks = [];
+            const baseN = p.sub_tasks.length;
+            for (const [i, st] of (op.sub_tasks || []).entries()) {
+              p.sub_tasks.push({
+                id: st.id || `${p.id}-${baseN + i + 1}`,
+                label: st.label || '',
+                state: st.state || 'todo'
+              });
+            }
+            applied++;
+            break;
+          }
+          case 'complete_sub_task': {
+            const p = state.long_projects.find(x => x.id === op.id);
+            const t = p?.sub_tasks?.find(x => x.id === op.task_id);
+            if (!t) { failed++; break; }
+            t.state = 'done';
+            applied++;
+            break;
+          }
+          case 'delete': {
+            const idx = state.long_projects.findIndex(x => x.id === op.id);
+            if (idx < 0) { failed++; break; }
+            state.long_projects.splice(idx, 1);
+            applied++;
+            break;
+          }
+          default: failed++;
+        }
+      } catch (e) {
+        console.warn('[long-ops] apply 错:', op, e);
+        failed++;
+      }
+    }
+    saveState();
+    if (typeof renderLong === 'function') renderLong();
+    return { applied, failed };
+  }
+  async function handleLongOpsProposal(ops) {
+    const lines = ops.map((o, i) => `• ${describeLongOp(o)}`).join('\n');
+    const ok = await window.soulConfirm({
+      message: `CC 提议以下长程变更：\n\n${lines}\n\n应用这些变更？`,
+      primaryLabel: '应用',
+      secondaryLabel: '取消'
+    });
+    if (!ok) {
+      appendMsg('cc', '（长程变更已取消 · 数据未动）');
+      return;
+    }
+    const { applied, failed } = applyLongOps(ops);
+    appendMsg('cc', `已应用 ${applied} 条长程变更${failed ? ` · ${failed} 条未执行（id 不存在或字段缺失）` : ''}。`);
+  }
+
   async function send() {
     const text = input.value.trim();
     if (!text) return;
@@ -3295,10 +5113,19 @@ zhiInit();
       const promptWithCtx = buildContextPrefix() + text;
       const reply = await invoke('cc_chat', { prompt: promptWithCtx, sessionId: sid, continueSession: cont });
       if (!cont) markSessionStarted();
-      pending.querySelector('.text').textContent = (reply || '').trim() || '（空响应）';
+
+      // 抽 long_projects fence（如果有，不显示 fence 原文给用户，只显示干净的回复）
+      const longOps = extractLongOps(reply);
+      const cleanReply = (longOps ? stripLongFence(reply) : reply).trim();
+      pending.querySelector('.text').textContent = cleanReply || '（空响应）';
       pending.classList.remove('pending');
       setCcState('happy');
       setTimeout(() => setCcState('idle'), 2200);
+
+      // 若 fence 存在，弹 soul-modal 预览（异步、不阻塞 happy state）
+      if (longOps && longOps.length > 0) {
+        handleLongOpsProposal(longOps);
+      }
     } catch (e) {
       pending.querySelector('.text').textContent = 'CC 调用失败：' + String(e);
       pending.classList.remove('pending');
@@ -3335,7 +5162,6 @@ zhiInit();
   const nextBtn = document.getElementById('onboard-next');
   const skipBtn = document.getElementById('onboard-skip');
   const closeBtn = document.getElementById('onboard-close');
-  const trigger = document.getElementById('onboard-debug-trigger');
 
   // 独立 storage（测试期不污染主 state，最终会 merge 进 zhenyuan_quest_v1）
   const DRAFT_KEY = 'soulcore_onboard_draft';
@@ -3543,24 +5369,21 @@ ${userText}
     return out;
   }
 
-  function typewriter(el, text, ms) {
-    // cancel 任何正在运行的 typewriter
-    if (currentTypewriter) currentTypewriter.cancel();
-    ms = ms || 28;
-    el.innerHTML = '';
-    el.setAttribute('data-typing', 'true');
+  // 逐字符写入到 target element（不管单页还是分页都用这个 primitive）
+  function writeChars(targetEl, text, ms, onDone) {
+    targetEl.innerHTML = '';
     const cursor = document.createElement('span');
     cursor.className = 'typewriter-cursor';
     cursor.innerHTML = '&nbsp;';
-    el.appendChild(cursor);
+    targetEl.appendChild(cursor);
 
     let i = 0;
     let timer = null;
     let cancelled = false;
 
     function done() {
-      el.setAttribute('data-typing', 'false');
       setTimeout(() => { if (cursor.parentNode) cursor.remove(); }, 1200);
+      if (onDone) onDone();
     }
     function tick() {
       if (cancelled) return;
@@ -3571,12 +5394,12 @@ ${userText}
       i++;
       timer = setTimeout(tick, ms);
     }
-    currentTypewriter = {
-      cancel: () => { cancelled = true; if (timer) clearTimeout(timer); el.setAttribute('data-typing', 'false'); },
+    tick();
+    return {
+      cancel: () => { cancelled = true; if (timer) clearTimeout(timer); },
       skipToEnd: () => {
         cancelled = true;
         if (timer) clearTimeout(timer);
-        // 一次性把剩余字符塞进去
         while (i < text.length) {
           const ch = text[i];
           const node = ch === '\n' ? document.createElement('br') : document.createTextNode(ch);
@@ -3584,9 +5407,147 @@ ${userText}
           i++;
         }
         done();
+      },
+      isDone: () => i >= text.length || cancelled,
+    };
+  }
+
+  // 长内容分页（默认 280 字符阈值）：按 \n\n 段落优先，单段超阈值按句子切
+  function splitIntoPages(text, maxLen) {
+    const paragraphs = text.split(/\n\n+/);
+    const pages = [];
+    let current = '';
+    for (const p of paragraphs) {
+      const para = p.trim();
+      if (!para) continue;
+      const candidate = current ? current + '\n\n' + para : para;
+      if (candidate.length <= maxLen) {
+        current = candidate;
+      } else {
+        if (current) {
+          pages.push(current);
+          current = '';
+        }
+        if (para.length <= maxLen) {
+          current = para;
+        } else {
+          // 单段超长 → 按中英文句号切；单句仍超长则硬切
+          const sentences = para.split(/(?<=[。！？!?])\s*/);
+          let chunk = '';
+          for (const sen of sentences) {
+            if (!sen) continue;
+            if (sen.length > maxLen) {
+              if (chunk) { pages.push(chunk); chunk = ''; }
+              let k = 0;
+              while (k < sen.length) {
+                pages.push(sen.slice(k, k + maxLen));
+                k += maxLen;
+              }
+            } else if ((chunk + sen).length <= maxLen) {
+              chunk += sen;
+            } else {
+              if (chunk) pages.push(chunk);
+              chunk = sen;
+            }
+          }
+          if (chunk) current = chunk;
+        }
+      }
+    }
+    if (current) pages.push(current);
+    return pages.length > 0 ? pages : [text];
+  }
+
+  function hidePager() {
+    const pager = document.getElementById('onboard-cc-pager');
+    if (pager) {
+      pager.hidden = true;
+      pager.classList.remove('visible');
+    }
+  }
+
+  function typewriter(el, text, ms) {
+    if (currentTypewriter) currentTypewriter.cancel();
+    ms = ms || 28;
+    el.setAttribute('data-typing', 'true');
+
+    const PAGE_THRESHOLD = 280;
+
+    // 短内容：单页路径（原行为）
+    if (text.length <= PAGE_THRESHOLD) {
+      hidePager();
+      currentTypewriter = writeChars(el, text, ms, () => {
+        el.setAttribute('data-typing', 'false');
+      });
+      return currentTypewriter;
+    }
+
+    // 长内容：分页路径
+    const pages = splitIntoPages(text, PAGE_THRESHOLD);
+    el.innerHTML = '';
+    pages.forEach((p, i) => {
+      const div = document.createElement('div');
+      div.className = 'cc-page' + (i === 0 ? ' active' : '');
+      div.dataset.pageIdx = String(i);
+      el.appendChild(div);
+    });
+
+    const pager = document.getElementById('onboard-cc-pager');
+    const indicator = document.getElementById('onboard-cc-pager-indicator');
+    const nextPageBtn = document.getElementById('onboard-cc-pager-next');
+    let pageIdx = 0;
+    let pageHandle = null;
+
+    function updateIndicator() {
+      if (indicator) indicator.textContent = (pageIdx + 1) + ' / ' + pages.length;
+    }
+    function startPageWrite() {
+      const active = el.querySelector('.cc-page.active');
+      if (!active) return;
+      pageHandle = writeChars(active, pages[pageIdx], ms, () => {
+        if (pageIdx < pages.length - 1) {
+          if (pager) {
+            pager.hidden = false;
+            requestAnimationFrame(() => pager.classList.add('visible'));
+          }
+        } else {
+          el.setAttribute('data-typing', 'false');
+          if (pager) {
+            pager.classList.remove('visible');
+            setTimeout(() => { pager.hidden = true; }, 400);
+          }
+        }
+      });
+    }
+    function goNext() {
+      if (pageIdx >= pages.length - 1) return;
+      if (pager) pager.classList.remove('visible');
+      const oldActive = el.querySelector('.cc-page.active');
+      if (oldActive) oldActive.classList.remove('active');
+      pageIdx++;
+      const newActive = el.querySelectorAll('.cc-page')[pageIdx];
+      if (newActive) newActive.classList.add('active');
+      updateIndicator();
+      startPageWrite();
+    }
+    if (pager) {
+      pager.hidden = true;
+      pager.classList.remove('visible');
+    }
+    updateIndicator();
+    if (nextPageBtn) nextPageBtn.onclick = goNext;
+    startPageWrite();
+
+    currentTypewriter = {
+      cancel: () => {
+        if (pageHandle) pageHandle.cancel();
+        hidePager();
+        el.setAttribute('data-typing', 'false');
+      },
+      skipToEnd: () => {
+        if (pageHandle) pageHandle.skipToEnd();
       }
     };
-    tick();
     return currentTypewriter;
   }
 
@@ -3594,6 +5555,7 @@ ${userText}
   function showThinking(el) {
     if (currentTypewriter) currentTypewriter.cancel();
     el.setAttribute('data-typing', 'false');
+    hidePager();
     el.innerHTML = '<span class="cc-thinking"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>';
   }
 
@@ -3601,6 +5563,7 @@ ${userText}
   function showOpening(el) {
     if (currentTypewriter) currentTypewriter.cancel();
     el.setAttribute('data-typing', 'false');
+    hidePager();
     el.innerHTML = '<div class="onboard-greeting">' +
       '<div class="onboard-greeting-line">我们见过——但「心舍」是第一次见你。</div>' +
       '<div class="onboard-greeting-line">这次我们慢慢来，大约十到十五分钟。</div>' +
@@ -3679,18 +5642,41 @@ ${userText}
     const hasSession = !!localStorage.getItem(SESSION_ID_KEY);
     const complete = isOnboardComplete();
 
-    // Tauri v2 默认 disable native confirm/alert → 用 modal 内 UI 替代
-    // 默认行为：有进度则接着跑；走完 8 步则自动重开；都没有则从 step 0 开始
+    // Tauri v2 默认 disable native confirm/alert → 用 modal 内 prompt UI 替代
     if (complete) {
-      console.log('[onboarding] previous run complete; resetting to retry. draft snapshot:', draft, 'life-trace:', lifeTrace);
-      resetOnboardingState();
+      console.log('[onboarding] previous run complete; prompting to retry. draft:', draft, 'life-trace:', lifeTrace);
+      showPrompt({
+        msg: '上次我们一起走完了八步。\n\n要不要再走一遍？（重新开始会清空之前的草稿。）',
+        primaryLabel: '再走一次',
+        secondaryLabel: '先关掉',
+        onPrimary: () => {
+          resetOnboardingState();
+          proceedToFlow(0);
+        },
+        onSecondary: () => closeModal(),
+      });
     } else if (hasDraft && hasSession) {
-      stepIdx = findResumeStep();
-      console.log('[onboarding] resuming at step', stepIdx + 1, '/ 8 (already collected', Object.keys(draft).length, 'steps)');
+      const resumeAt = findResumeStep();
+      console.log('[onboarding] previous draft present; prompting at step', resumeAt + 1, '/ 8 (collected', Object.keys(draft).length, 'steps)');
+      showPrompt({
+        msg: `上次走到第 ${resumeAt + 1} / 8 步。\n\n要从那里接上吗？`,
+        primaryLabel: '从这里接上',
+        secondaryLabel: '重新开始',
+        onPrimary: () => proceedToFlow(resumeAt),
+        onSecondary: () => {
+          resetOnboardingState();
+          proceedToFlow(0);
+        },
+      });
     } else {
-      stepIdx = 0;
+      proceedToFlow(0);
     }
+  }
 
+  function proceedToFlow(idx) {
+    stepIdx = idx;
+    hidePrompt();
+    showBodyParts();
     requestAnimationFrame(() => {
       modal.classList.add('visible');
       setTimeout(() => {
@@ -3707,6 +5693,50 @@ ${userText}
     });
   }
 
+  function showPrompt({msg, primaryLabel, secondaryLabel, onPrimary, onSecondary}) {
+    hideBodyParts();
+    const promptEl = document.getElementById('onboard-prompt');
+    const msgEl = document.getElementById('onboard-prompt-msg');
+    const pBtn = document.getElementById('onboard-prompt-primary');
+    const sBtn = document.getElementById('onboard-prompt-secondary');
+    msgEl.textContent = msg;
+    pBtn.textContent = primaryLabel;
+    sBtn.textContent = secondaryLabel;
+    pBtn.onclick = onPrimary;
+    sBtn.onclick = onSecondary;
+    promptEl.hidden = false;
+    requestAnimationFrame(() => {
+      modal.classList.add('visible');
+      requestAnimationFrame(() => promptEl.classList.add('visible'));
+    });
+  }
+
+  function hidePrompt() {
+    const promptEl = document.getElementById('onboard-prompt');
+    if (promptEl) {
+      promptEl.hidden = true;
+      promptEl.classList.remove('visible');
+    }
+  }
+
+  function hideBodyParts() {
+    const body = modal.querySelector('.onboard-body');
+    const footnote = modal.querySelector('.onboard-footnote');
+    const meter = modal.querySelector('.onboard-step-meter');
+    if (body) body.style.display = 'none';
+    if (footnote) footnote.style.display = 'none';
+    if (meter) meter.style.display = 'none';
+  }
+
+  function showBodyParts() {
+    const body = modal.querySelector('.onboard-body');
+    const footnote = modal.querySelector('.onboard-footnote');
+    const meter = modal.querySelector('.onboard-step-meter');
+    if (body) body.style.display = '';
+    if (footnote) footnote.style.display = '';
+    if (meter) meter.style.display = '';
+  }
+
   function closeModal() {
     modal.classList.remove('visible');
     const win = document.querySelector('.window');
@@ -3719,7 +5749,12 @@ ${userText}
         win.classList.remove('onboard-emerging', 'onboard-emerged');
       }, 1500);
     }
-    setTimeout(() => { modal.hidden = true; }, 800);
+    setTimeout(() => {
+      modal.hidden = true;
+      // 复位 prompt / body 显隐，下次 open 由分支决定
+      hidePrompt();
+      showBodyParts();
+    }, 800);
   }
 
   async function startStep(i, skipThinking) {
@@ -3790,11 +5825,57 @@ ${userText}
   function finalize() {
     typewriter(ccText, '我们走完了。\n\n你的 draft 已收在本地。主界面准备好——慢慢来。');
     setTimeout(() => closeModal(), 4800);
-    // chunk C MVP：暂不自动 merge draft 到 zhenyuan_quest_v1
-    // 待跑通后再加 "应用到主 app" 按钮 / 自动合并逻辑
+    mergeDraftIntoMainState();
   }
 
-  trigger?.addEventListener('click', openModal);
+  // 自动 merge：从 draft 把 long_projects 合并到主 state.long_projects
+  // 同 id 跳过（不覆盖已有数据）；schema 标准化（draft 的 tone→vibe，milestones→sub_tasks）
+  // 其它 draft 字段（task_groups/attributes/records/...）暂不自动 merge——会影响各 panel 渲染、需要单独验证
+  function mergeDraftIntoMainState() {
+    try {
+      if (typeof state === 'undefined' || typeof saveState !== 'function') return;
+      const dProjects = Array.isArray(draft?.long_projects) ? draft.long_projects : [];
+      if (!dProjects.length) return;
+      if (!Array.isArray(state.long_projects)) state.long_projects = [];
+      const existingIds = new Set(state.long_projects.map(p => p.id));
+      let added = 0;
+      for (const d of dProjects) {
+        if (!d || !d.id || !d.name) continue;
+        if (existingIds.has(d.id)) continue;
+        const subTasks = Array.isArray(d.milestones)
+          ? d.milestones.map((m, i) => ({
+              id: `${d.id}-${i + 1}`,
+              label: typeof m === 'string' ? m : (m.label || m.name || ''),
+              state: 'todo'
+            })).filter(s => s.label)
+          : [];
+        state.long_projects.push({
+          id: d.id,
+          name: d.name,
+          phase: d.phase || '',
+          vibe: d.tone || d.vibe || '',
+          status: d.status === 'paused' ? 'paused' : 'active',
+          meta: d.meta || null,
+          sub_tasks: subTasks,
+          doc_path: d.doc_path || null
+        });
+        added++;
+      }
+      if (added > 0) {
+        saveState();
+        if (typeof renderLong === 'function') renderLong();
+        console.log('[onboarding finalize] 自动 merge', added, '个长程项目到 state.long_projects');
+      }
+    } catch (e) {
+      console.warn('[onboarding finalize] merge draft.long_projects 失败:', e);
+    }
+  }
+
+  // 首次启动自动召唤（onboarded 标记缺时；800ms 延迟让 window 渲染稳定）
+  if (!localStorage.getItem(ONBOARDED_KEY)) {
+    setTimeout(openModal, 800);
+  }
+
   nextBtn?.addEventListener('click', () => {
     if ((userInput?.value || '').trim()) handleUserSubmit();
     else nextStep();
@@ -3829,6 +5910,161 @@ ${userText}
     }
     if (e.key === 'Escape' && !busy) closeModal();
   });
+})();
+
+// ═══════════ soul-modal · 通用 confirm/alert/prompt helper ═══════════
+// Tauri v2 默认 disable native alert/confirm/prompt（红线 #6）。
+// 暴露 window.soulConfirm / soulAlert / soulPrompt 都返回 Promise。
+// ═════════════════════════════════════════════════════════════════════
+(function bootSoulModal() {
+  const modal = document.getElementById('soul-modal');
+  if (!modal) return;
+  const msgEl = document.getElementById('soul-modal-msg');
+  const inputEl = document.getElementById('soul-modal-input');
+  const primaryBtn = document.getElementById('soul-modal-primary');
+  const secondaryBtn = document.getElementById('soul-modal-secondary');
+  const overlayEl = modal.querySelector('.soul-modal-overlay');
+
+  let currentResolver = null;     // 当前 open 的 resolve 函数
+  let currentCancelValue = null;  // cancel 时返回的值（false / null / undefined）
+
+  function close(value) {
+    if (!currentResolver) return;
+    const resolver = currentResolver;
+    currentResolver = null;
+    modal.classList.remove('visible');
+    // 等过渡完再隐藏
+    setTimeout(() => {
+      if (!currentResolver) {
+        modal.hidden = true;
+        inputEl.hidden = true;
+        inputEl.value = '';
+      }
+    }, 300);
+    resolver(value);
+  }
+
+  function open(opts) {
+    // 单例：如果有在开的，先 cancel 它（resolve 为 cancel 值）
+    if (currentResolver) {
+      const prevResolver = currentResolver;
+      const prevCancel = currentCancelValue;
+      currentResolver = null;
+      prevResolver(prevCancel);
+    }
+
+    return new Promise((resolve) => {
+      currentResolver = resolve;
+      currentCancelValue = opts.cancelValue;
+
+      msgEl.textContent = opts.message || '';
+      primaryBtn.textContent = opts.primaryLabel || '确认';
+
+      if (opts.secondaryLabel === null) {
+        secondaryBtn.hidden = true;
+        secondaryBtn.textContent = '';
+      } else {
+        secondaryBtn.hidden = false;
+        secondaryBtn.textContent = opts.secondaryLabel || '取消';
+      }
+
+      if (opts.showInput) {
+        inputEl.hidden = false;
+        inputEl.value = opts.defaultValue || '';
+        inputEl.placeholder = opts.placeholder || '';
+      } else {
+        inputEl.hidden = true;
+        inputEl.value = '';
+      }
+
+      modal.hidden = false;
+      // 触发过渡（下一帧加 .visible）
+      requestAnimationFrame(() => {
+        modal.classList.add('visible');
+        if (opts.showInput) {
+          setTimeout(() => inputEl.focus(), 50);
+        } else {
+          setTimeout(() => primaryBtn.focus(), 50);
+        }
+      });
+    });
+  }
+
+  primaryBtn.addEventListener('click', () => {
+    if (!currentResolver) return;
+    if (!inputEl.hidden) {
+      close(inputEl.value);
+    } else {
+      // confirm 时返回 true，alert 时返回 undefined
+      close(currentCancelValue === false ? true : undefined);
+    }
+  });
+
+  secondaryBtn.addEventListener('click', () => {
+    if (!currentResolver) return;
+    close(currentCancelValue);
+  });
+
+  overlayEl.addEventListener('click', () => {
+    if (!currentResolver) return;
+    close(currentCancelValue);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (modal.hidden || !currentResolver) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close(currentCancelValue);
+      return;
+    }
+    if (e.key === 'Enter') {
+      if (!inputEl.hidden) {
+        // prompt 模式 input 里按 Enter 提交（textarea 不在场景内,input 单行）
+        e.preventDefault();
+        close(inputEl.value);
+      } else {
+        // 非 input 焦点状态 Enter = primary
+        e.preventDefault();
+        if (currentCancelValue === false) {
+          close(true);
+        } else {
+          close(undefined);
+        }
+      }
+    }
+  });
+
+  window.soulConfirm = function ({ message, primaryLabel = '确认', secondaryLabel = '取消' } = {}) {
+    return open({
+      message,
+      primaryLabel,
+      secondaryLabel,
+      cancelValue: false,
+      showInput: false,
+    });
+  };
+
+  window.soulAlert = function ({ message, primaryLabel = '好' } = {}) {
+    return open({
+      message,
+      primaryLabel,
+      secondaryLabel: null,
+      cancelValue: undefined,
+      showInput: false,
+    });
+  };
+
+  window.soulPrompt = function ({ message, defaultValue = '', placeholder = '', primaryLabel = '确认', secondaryLabel = '取消' } = {}) {
+    return open({
+      message,
+      primaryLabel,
+      secondaryLabel,
+      cancelValue: null,
+      showInput: true,
+      defaultValue,
+      placeholder,
+    });
+  };
 })();
 </script>
 

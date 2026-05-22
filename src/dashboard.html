@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>心舍 · 仪表盘</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Noto+Serif+SC:wght@200;300;400;500&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      font-family: 'Noto Serif SC', '思源宋体', 'Source Han Serif SC', 'Cormorant Garamond', serif;
+      background: transparent;
+      color: rgba(250, 241, 220, 0.94);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ───── preview 兑底：浏览器里不走 Tauri 时 · 仅外包装 · 不动 widget 本身 ───── */
+    body.is-preview {
+      width: 100vw;
+      height: 100vh;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      /* 模拟 macOS 桌面的暖暖背景，让 widget 透明感能看出来 */
+      background:
+        radial-gradient(120% 80% at 18% 12%, rgba(120, 88, 52, 0.22), transparent 55%),
+        radial-gradient(90% 70% at 82% 88%, rgba(40, 70, 96, 0.20), transparent 60%),
+        linear-gradient(160deg, #161520 0%, #0d0e15 55%, #07080d 100%);
+    }
+    body.is-preview .dashboard {
+      width: 338px;
+      height: 400px;
+      flex-shrink: 0;
+      filter:
+        drop-shadow(0 30px 60px rgba(0,0,0,0.55))
+        drop-shadow(0 6px 12px rgba(0,0,0,0.35));
+    }
+    body.is-preview .dashboard.mode-narrow {
+      height: 168px;
+    }
+    body.is-preview::after {
+      content: "PREVIEW · widget 338×400";
+      position: fixed;
+      bottom: 14px; left: 50%; transform: translateX(-50%);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 10px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: rgba(250, 241, 220, 0.32);
+      pointer-events: none;
+    }
+
+    /* ───── dashboard 容器（CD 接回视觉调子） ───── */
+    .dashboard {
+      width: 100%;
+      height: 100vh;
+      border-radius: 36px;
+      background: rgba(20, 20, 28, 0.36);
+      /* macOS 透明窗口下 webview 自己做玻璃感（vibrancy 已去掉避免方角矩形透出） */
+      backdrop-filter: blur(40px) saturate(1.4);
+      -webkit-backdrop-filter: blur(40px) saturate(1.4);
+      border: 0.5px solid rgba(250, 229, 179, 0.10);
+      box-shadow:
+        inset 0 0.5px 0 rgba(250, 229, 179, 0.08),
+        inset 0 -0.5px 0 rgba(0, 0, 0, 0.3);
+      position: relative;
+      overflow: hidden;
+      font-family: 'Noto Serif SC', serif;
+      font-weight: 300;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+      -webkit-app-region: drag;
+      transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    /* ───── 透明度模式 · 3 档 ───── */
+    /* 模式 1 · 全透明：直接看到桌面 wallpaper */
+    .dashboard.mode-transparent {
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border-color: rgba(250, 229, 179, 0.04);
+      box-shadow: none;
+    }
+    /* 模式 2 · 半透明（frosted）= 当前默认效果，已在 .dashboard 基底里 */
+    .dashboard.mode-frosted {
+      /* 用基底值，无需覆写 */
+    }
+    /* 模式 3 · 鼠标悬停切换：默认透明，hover 时 transition 到 frosted */
+    .dashboard.mode-hover {
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border-color: rgba(250, 229, 179, 0.04);
+      box-shadow: none;
+    }
+    .dashboard.mode-hover:hover {
+      background: rgba(20, 20, 28, 0.36);
+      backdrop-filter: blur(40px) saturate(1.4);
+      -webkit-backdrop-filter: blur(40px) saturate(1.4);
+      border-color: rgba(250, 229, 179, 0.10);
+      box-shadow:
+        inset 0 0.5px 0 rgba(250, 229, 179, 0.08),
+        inset 0 -0.5px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    /* ───── 右键菜单（透明度切换） ───── */
+    .dashboard-context-menu {
+      position: absolute;
+      z-index: 1000;
+      min-width: 168px;
+      padding: 6px;
+      background: rgba(20, 20, 28, 0.78);
+      backdrop-filter: blur(30px) saturate(1.4);
+      -webkit-backdrop-filter: blur(30px) saturate(1.4);
+      border: 0.5px solid rgba(250, 229, 179, 0.22);
+      border-radius: 12px;
+      box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.4),
+        inset 0 0.5px 0 rgba(250, 229, 179, 0.08);
+      font-family: 'Noto Serif SC', 'Cormorant Garamond', serif;
+      font-weight: 300;
+      opacity: 0;
+      transform: scale(0.96);
+      pointer-events: none;
+      transition: opacity 0.14s ease, transform 0.14s ease;
+      -webkit-app-region: no-drag;
+    }
+    .dashboard-context-menu.is-open {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+    .dashboard-context-item {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 7px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+      color: rgba(250, 241, 220, 0.78);
+      font-size: 12.5px;
+      letter-spacing: 0.4px;
+      transition: background 0.15s ease, color 0.15s ease;
+      -webkit-app-region: no-drag;
+    }
+    .dashboard-context-item:hover {
+      background: rgba(250, 229, 179, 0.08);
+      color: rgba(250, 241, 220, 1);
+    }
+    .dashboard-context-item .ctx-en {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 10.5px;
+      letter-spacing: 0.6px;
+      color: rgba(250, 229, 179, 0.42);
+      margin-left: auto;
+    }
+    .dashboard-context-item[data-active="true"] {
+      color: rgba(250, 229, 179, 0.98);
+      background: rgba(250, 229, 179, 0.10);
+    }
+    .dashboard-context-item[data-active="true"] .ctx-en {
+      color: rgba(250, 229, 179, 0.78);
+    }
+    .dashboard button,
+    .dashboard a,
+    .dashboard input,
+    .dashboard textarea,
+    .dashboard .todo-item,
+    .dashboard .widget-scroll {
+      -webkit-app-region: no-drag;
+    }
+
+    /* ───── 顶部 drag handle ───── */
+    .dashboard-titlebar {
+      height: 28px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-app-region: drag;
+    }
+    .dashboard-drag-dots {
+      width: 28px;
+      height: 4px;
+      background:
+        radial-gradient(circle, rgba(250, 229, 179, 0.32) 1px, transparent 1.4px) 0 50% / 6px 4px repeat-x;
+    }
+
+    /* ───── pin 按钮 · SVG ───── */
+    .dashboard-pin-corner {
+      position: absolute;
+      top: 0;
+      right: 12px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      z-index: 10;
+      -webkit-app-region: no-drag;
+    }
+    .dashboard-pin {
+      background: transparent;
+      border: none;
+      color: rgba(250, 229, 179, 0.55);
+      cursor: pointer;
+      padding: 4px;
+      line-height: 0;
+      opacity: 0.75;
+      transition: opacity 0.2s ease, transform 0.2s ease, color 0.2s ease;
+      -webkit-app-region: no-drag;
+    }
+    .dashboard-pin svg { display: block; }
+    .dashboard-pin:hover { opacity: 1; }
+    .dashboard-pin[data-pinned="true"] {
+      color: rgba(250, 229, 179, 0.95);
+      opacity: 1;
+      transform: rotate(-22deg);
+      filter: drop-shadow(0 0 4px rgba(250, 229, 179, 0.45));
+    }
+    .dashboard-pin .pin-head { transition: fill 0.2s ease; }
+    .dashboard-pin[data-pinned="true"] .pin-head { fill: rgba(250, 229, 179, 0.95); }
+
+    /* ───── 模式切换按钮（完整 / 收窄） ───── */
+    .dashboard-mode-corner {
+      position: absolute;
+      top: 0;
+      right: 42px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      z-index: 10;
+      -webkit-app-region: no-drag;
+    }
+    .dashboard-mode-btn {
+      background: transparent;
+      border: none;
+      color: rgba(250, 229, 179, 0.55);
+      cursor: pointer;
+      padding: 4px;
+      line-height: 0;
+      opacity: 0.75;
+      transition: opacity 0.2s ease, color 0.2s ease, transform 0.2s ease;
+      -webkit-app-region: no-drag;
+    }
+    .dashboard-mode-btn svg { display: block; }
+    .dashboard-mode-btn:hover { opacity: 1; }
+    .dashboard-mode-btn[data-mode="narrow"] {
+      color: rgba(250, 229, 179, 0.95);
+      opacity: 1;
+      filter: drop-shadow(0 0 4px rgba(250, 229, 179, 0.35));
+    }
+
+    /* ───── 收窄提醒模式 ───── */
+    .dashboard.mode-narrow {
+      border-radius: 22px;
+    }
+    .dashboard.mode-narrow .dashboard-brand,
+    .dashboard.mode-narrow .dashboard-divider,
+    .dashboard.mode-narrow .dashboard-content,
+    .dashboard.mode-narrow .widget-aspects-fixed,
+    .dashboard.mode-narrow .dashboard-actions {
+      display: none;
+    }
+    .dashboard.mode-narrow .dashboard-body {
+      padding: 0 18px 12px;
+    }
+    .dashboard-narrow-panel {
+      display: none;
+      flex-direction: column;
+      gap: 0;
+      padding: 4px 0 0;
+      -webkit-app-region: drag;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .dashboard.mode-narrow .dashboard-narrow-panel {
+      display: flex;
+    }
+    .narrow-label {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 9.5px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: rgba(250, 229, 179, 0.48);
+      padding: 0 0 6px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      position: relative;
+    }
+    .narrow-label::after {
+      content: "";
+      position: absolute;
+      left: -2px; right: -2px; bottom: -1px;
+      height: 0.5px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(250, 229, 179, 0.18) 15%,
+        rgba(250, 229, 179, 0.18) 85%,
+        transparent 100%);
+    }
+    .narrow-label-meta {
+      font-family: 'Cormorant Garamond', serif;
+      font-feature-settings: "tnum";
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: rgba(250, 241, 220, 0.42);
+      font-style: normal;
+    }
+    .narrow-list {
+      display: flex;
+      flex-direction: column;
+      flex: 0 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: transparent transparent;
+      transition: scrollbar-color 0.3s ease;
+      padding-top: 8px;
+      -webkit-app-region: no-drag;
+    }
+    .narrow-list:hover { scrollbar-color: rgba(250, 229, 179, 0.32) transparent; }
+    .narrow-list::-webkit-scrollbar { width: 4px; }
+    .narrow-list::-webkit-scrollbar-track { background: transparent; }
+    .narrow-list::-webkit-scrollbar-thumb {
+      background: rgba(250, 229, 179, 0.16);
+      border-radius: 2px;
+      transition: background 0.3s ease;
+    }
+    .narrow-list:hover::-webkit-scrollbar-thumb { background: rgba(250, 229, 179, 0.42); }
+    .narrow-item {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 3px 0;
+      line-height: 1.35;
+    }
+    .narrow-time {
+      font-family: 'Cormorant Garamond', serif;
+      font-feature-settings: "tnum";
+      font-size: 12px;
+      letter-spacing: 0.6px;
+      color: rgba(250, 229, 179, 0.62);
+      flex: 0 0 auto;
+      width: 42px;
+      transition: color 0.3s ease, text-shadow 0.3s ease;
+    }
+    .narrow-item.is-next .narrow-time {
+      color: rgba(250, 229, 179, 0.98);
+      text-shadow: 0 0 6px rgba(250, 229, 179, 0.42);
+    }
+    .narrow-title {
+      font-family: 'Noto Serif SC', serif;
+      font-weight: 300;
+      font-size: 12.5px;
+      color: rgba(250, 241, 220, 0.88);
+      letter-spacing: 0.3px;
+      flex: 1 1 auto;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .narrow-delta {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-feature-settings: "tnum";
+      font-size: 10.5px;
+      letter-spacing: 0.6px;
+      color: rgba(250, 229, 179, 0.38);
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+    .narrow-item.is-next .narrow-delta {
+      color: rgba(250, 229, 179, 0.72);
+      font-style: normal;
+    }
+    .narrow-empty {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      color: rgba(250, 241, 220, 0.4);
+      text-align: center;
+      padding: 12px 0 0;
+    }
+
+    /* ───── body / brand / divider ───── */
+    .dashboard-body {
+      padding: 0 24px 10px;
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      -webkit-app-region: drag;
+    }
+    .dashboard-brand {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 10px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      color: rgba(250, 229, 179, 0.42);
+      text-align: center;
+      padding: 2px 0 6px;
+    }
+    .dashboard-divider {
+      height: 0.5px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(250, 229, 179, 0.32) 20%,
+        rgba(250, 229, 179, 0.32) 80%,
+        transparent 100%);
+    }
+
+    /* ───── dashboard-content · 今日 + 长程的滚动区 ───── */
+    .dashboard-content {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 10px 2px 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: transparent transparent;
+      transition: scrollbar-color 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .dashboard-content:hover { scrollbar-color: rgba(250, 229, 179, 0.32) transparent; }
+    .dashboard-content::-webkit-scrollbar { width: 4px; }
+    .dashboard-content::-webkit-scrollbar-track { background: transparent; }
+    .dashboard-content::-webkit-scrollbar-thumb {
+      background: rgba(250, 229, 179, 0.16);
+      border-radius: 2px;
+      transition: background 0.3s ease;
+    }
+    .dashboard-content:hover::-webkit-scrollbar-thumb { background: rgba(250, 229, 179, 0.42); }
+    /* 滚动区顶/底都加一道渐弱 fade，暗示可滚 */
+    .dashboard-content {
+      mask-image: linear-gradient(
+        180deg,
+        transparent 0,
+        #000 10px,
+        #000 calc(100% - 10px),
+        transparent 100%
+      );
+      -webkit-mask-image: linear-gradient(
+        180deg,
+        transparent 0,
+        #000 10px,
+        #000 calc(100% - 10px),
+        transparent 100%
+      );
+    }
+
+    /* « aspects 区 · 钉在底 · 与 content 同级） */
+    .widget-aspects-fixed {
+      flex: 0 0 auto;
+      padding: 5px 2px 0;
+      position: relative;
+    }
+    .widget-aspects-fixed .widget-label {
+      margin-bottom: 4px;
+    }
+    .widget-aspects-fixed::before {
+      content: "";
+      position: absolute;
+      left: -2px; right: -2px;
+      top: 0;
+      height: 0.5px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(250, 229, 179, 0.22) 15%,
+        rgba(250, 229, 179, 0.22) 85%,
+        transparent 100%);
+    }
+
+    /* ───── 区段通用 ───── */
+    .widget-section { display: flex; flex-direction: column; }
+    .widget-section + .widget-section { margin-top: 7px; padding-top: 7px; }
+    .widget-section + .widget-section::before {
+      content: "";
+      display: block;
+      height: 0.5px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(250, 229, 179, 0.18) 15%,
+        rgba(250, 229, 179, 0.18) 85%,
+        transparent 100%);
+      margin: 0 -2px 7px;
+    }
+    .widget-label {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 10px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: rgba(250, 229, 179, 0.48);
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .widget-label-meta {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: rgba(250, 241, 220, 0.32);
+      font-style: italic;
+    }
+
+    /* ───── 一区 · TODAY ───── */
+    .widget-today { gap: 0; }
+    .todo-item {
+      display: flex; align-items: center;
+      gap: 12px;
+      padding: 5px 0;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+      -webkit-app-region: no-drag;
+    }
+    .todo-item:hover .todo-glyph { border-color: rgba(250, 229, 179, 0.75); }
+    .todo-item:hover .todo-label { color: rgba(250, 241, 220, 1); }
+    .todo-glyph {
+      flex: 0 0 11px;
+      width: 11px; height: 11px;
+      border: 0.75px solid rgba(250, 229, 179, 0.55);
+      border-radius: 50%;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+    .todo-item[data-state="partial"] .todo-glyph::after {
+      content: ""; position: absolute;
+      left: 0; top: 0; bottom: 0; width: 50%;
+      background: rgba(250, 229, 179, 0.72);
+      border-radius: 999px 0 0 999px;
+    }
+    .todo-item[data-state="done"] .todo-glyph {
+      background: rgba(250, 229, 179, 0.78);
+      border-color: rgba(250, 229, 179, 0.78);
+      box-shadow: 0 0 6px rgba(250, 229, 179, 0.35);
+    }
+    .todo-label {
+      font-family: 'Noto Serif SC', serif;
+      font-weight: 300;
+      font-size: 13.5px;
+      line-height: 1.4;
+      color: rgba(250, 241, 220, 0.92);
+      letter-spacing: 0.3px;
+      flex: 1;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+      position: relative;
+    }
+    .todo-en {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-weight: 400;
+      font-size: 11px;
+      letter-spacing: 0.6px;
+      color: rgba(250, 229, 179, 0.4);
+      margin-left: auto;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+    .todo-item[data-state="done"] .todo-label {
+      font-style: italic;
+      color: rgba(250, 241, 220, 0.32);
+    }
+    .todo-item[data-state="done"] .todo-label::after {
+      content: "";
+      position: absolute;
+      left: 0; right: 0;
+      top: 50%;
+      height: 0.5px;
+      background: rgba(250, 241, 220, 0.32);
+      pointer-events: none;
+    }
+    .todo-item[data-state="done"] .todo-en {
+      color: rgba(250, 229, 179, 0.22);
+    }
+
+    /* ───── 二区 · LONG ───── */
+    .widget-long { gap: 0; }
+    .long-item {
+      padding: 5px 0;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .long-name {
+      font-size: 12.5px;
+      color: rgba(250, 241, 220, 0.88);
+      letter-spacing: 0.4px;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+    .long-vibe {
+      flex: 1 1 auto;
+      font-size: 10.5px;
+      color: rgba(250, 241, 220, 0.45);
+      font-weight: 200;
+      line-height: 1.4;
+      letter-spacing: 0.2px;
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ───── 三区 · ASPECTS（气场） ───── */
+    .widget-aspects { gap: 0; }
+    .aspect-line {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 11.5px;
+      color: rgba(250, 241, 220, 0.62);
+      letter-spacing: 0.6px;
+      line-height: 1.4;
+    }
+    .aspect-tone {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex: 0 0 8px;
+      background: radial-gradient(circle at 30% 30%,
+        rgba(180, 220, 235, 0.85),
+        rgba(120, 165, 195, 0.55) 60%,
+        rgba(80, 120, 150, 0.35));
+      box-shadow: 0 0 8px rgba(160, 200, 230, 0.4);
+      transition: background 0.4s ease, box-shadow 0.4s ease;
+    }
+    body[data-mode="day"] .aspect-tone {
+      background: radial-gradient(circle at 30% 30%,
+        rgba(255, 235, 175, 0.95),
+        rgba(245, 190, 110, 0.7) 55%,
+        rgba(200, 130, 60, 0.45));
+      box-shadow: 0 0 10px rgba(250, 200, 130, 0.6);
+    }
+    .aspect-text { transition: opacity 0.3s ease; }
+    body[data-mode="night"] .aspect-text--day,
+    body[data-mode="day"]   .aspect-text--night { display: none; }
+
+    /* ───── 收起按钮 ───── */
+    .dashboard-actions {
+      flex: 0 0 auto;
+      height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 5px;
+    }
+    .dashboard-action {
+      background: transparent;
+      border: 0.5px solid rgba(250, 229, 179, 0.28);
+      color: rgba(250, 241, 220, 0.72);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 10.5px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      padding: 4px 18px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      -webkit-app-region: no-drag;
+    }
+    .dashboard-action:hover {
+      border-color: rgba(250, 229, 179, 0.55);
+      color: rgba(250, 241, 220, 0.95);
+    }
+
+    /* ───── 透明度切换 toast（双击后短提示） ───── */
+    .dashboard-toast {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translate(-50%, -6px);
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: rgba(20, 20, 28, 0.55);
+      backdrop-filter: blur(16px) saturate(1.3);
+      -webkit-backdrop-filter: blur(16px) saturate(1.3);
+      border: 0.5px solid rgba(250, 229, 179, 0.22);
+      color: rgba(250, 229, 179, 0.92);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 10px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      z-index: 1100;
+      white-space: nowrap;
+    }
+    .dashboard-toast.is-visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  </style>
+</head>
+<body data-mode="night">
+  <div class="dashboard" id="dashboard-window">
+    <div class="dashboard-titlebar"><span class="dashboard-drag-dots"></span></div>
+
+    <div class="dashboard-pin-corner">
+      <button class="dashboard-pin" id="dashboard-pin-btn" data-pinned="false" aria-pressed="false" title="固定置顶">
+        <svg width="12" height="14" viewBox="0 0 12 14" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path class="pin-head" d="M3 4.2 Q3 1.6 6 1.6 Q9 1.6 9 4.2 Z" fill="transparent" />
+          <line x1="2.6" y1="4.6" x2="9.4" y2="4.6" />
+          <line x1="6" y1="4.6" x2="6" y2="12.4" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="dashboard-mode-corner">
+      <button class="dashboard-mode-btn" id="dashboard-mode-btn" data-mode="full" aria-pressed="false" title="切换收窄提醒">
+        <svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="0.85" stroke-linecap="round" aria-hidden="true">
+          <line x1="2" y1="3.4" x2="11" y2="3.4" />
+          <line x1="3" y1="8.4" x2="12" y2="8.4" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="dashboard-body">
+      <div class="dashboard-brand">DASHBOARD · 仪表盘</div>
+      <div class="dashboard-divider"></div>
+
+      <!-- CD 视觉接力区 START -->
+      <div class="dashboard-content" id="dashboard-content">
+
+        <!-- 一区 · TODAY -->
+        <section class="widget-section widget-today" data-view="today">
+          <div class="widget-label">
+            <span>TODAY · 今日</span>
+            <span class="widget-label-meta" id="dashboard-today-meta">— · —</span>
+          </div>
+
+          <div class="todo-item" data-todo-id="t1" data-state="done">
+            <span class="todo-glyph"></span>
+            <span class="todo-label">子时静坐 三十分 <em class="todo-en">midnight sit</em></span>
+          </div>
+          <div class="todo-item" data-todo-id="t2" data-state="partial">
+            <span class="todo-glyph"></span>
+            <span class="todo-label">写 心舍 onboarding 文案 <em class="todo-en">copy draft</em></span>
+          </div>
+          <div class="todo-item" data-todo-id="t3" data-state="todo">
+            <span class="todo-glyph"></span>
+            <span class="todo-label">整理书房 · 西窗一角 <em class="todo-en">west corner</em></span>
+          </div>
+          <div class="todo-item" data-todo-id="t4" data-state="todo">
+            <span class="todo-glyph"></span>
+            <span class="todo-label">通话 · 师兄 <em class="todo-en">elder call</em></span>
+          </div>
+          <div class="todo-item" data-todo-id="t5" data-state="todo">
+            <span class="todo-glyph"></span>
+            <span class="todo-label">读 《道德经》 第二章 <em class="todo-en">tao · ii</em></span>
+          </div>
+          <div class="todo-item" data-todo-id="t6" data-state="todo">
+            <span class="todo-glyph"></span>
+            <span class="todo-label">晚课 · 护眼二十分 <em class="todo-en">evening eyes</em></span>
+          </div>
+        </section>
+
+        <!-- 二区 · LONG -->
+        <section class="widget-section widget-long" data-view="long">
+          <div class="widget-label">
+            <span>LONG · 长程</span>
+          </div>
+
+          <div class="long-item">
+            <span class="long-name">心舍 · 整端落地</span>
+            <span class="long-vibe">小端先浮起来</span>
+          </div>
+          <div class="long-item">
+            <span class="long-name">太极 · 第二式</span>
+            <span class="long-vibe">已能不想 · 该练慢</span>
+          </div>
+        </section>
+
+      </div>
+      <!-- CD 视觉接力区 END -->
+
+      <!-- 三区 · ASPECTS（钉在底，与 content 同级） -->
+      <section class="widget-section widget-aspects widget-aspects-fixed" data-view="aspects">
+        <div class="widget-label">
+          <span>ASPECTS · 气场</span>
+        </div>
+        <div class="aspect-line">
+          <span class="aspect-tone" title="今日气场色温"></span>
+          <span class="aspect-text aspect-text--night">今夜偏润 · 心稳 · 宜慢不宜赶</span>
+          <span class="aspect-text aspect-text--day">今日偏燥 · 气提 · 宜简不宜繁</span>
+        </div>
+      </section>
+
+      <!-- 收窄提醒模式 panel · 仅在 .mode-narrow 下显示 -->
+      <div class="dashboard-narrow-panel" id="dashboard-narrow-panel">
+        <div class="narrow-label">
+          <span>REMINDERS · 接下来 2h</span>
+          <span class="narrow-label-meta" id="narrow-meta">——</span>
+        </div>
+        <div class="narrow-list" id="narrow-list"></div>
+      </div>
+
+      <div class="dashboard-actions">
+        <button class="dashboard-action" id="dashboard-close-btn">收起</button>
+      </div>
+    </div>
+
+    <!-- 双击切透明度 · 短提示（中间顶部飘出） -->
+    <div class="dashboard-toast" id="dashboard-toast" aria-live="polite"></div>
+
+    <!-- 右键菜单：透明度模式切换 -->
+    <div class="dashboard-context-menu" id="dashboard-context-menu" role="menu" aria-hidden="true">
+      <div class="dashboard-context-item" role="menuitem" data-mode="transparent">
+        <span>透明</span><span class="ctx-en">transparent</span>
+      </div>
+      <div class="dashboard-context-item" role="menuitem" data-mode="frosted">
+        <span>半透明</span><span class="ctx-en">frosted</span>
+      </div>
+      <div class="dashboard-context-item" role="menuitem" data-mode="hover">
+        <span>鼠标悬停</span><span class="ctx-en">hover</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const tauri = window.__TAURI__;
+      const invoke = tauri?.core?.invoke || tauri?.invoke;
+
+      // 不在 Tauri 下跑 → 为 body 加 .is-preview，让 widget 回到真实尺寸（仅预览）
+      if (!tauri) {
+        document.body.classList.add('is-preview');
+      }
+
+      // ─── 拖动：延迟 220ms 起拖，留出双击检测窗口 ───
+      // 为什么：mousedown 上立刻调 start_dragging 会让原生 drag 吞掉后续
+      // mouseup/click 序列，dblclick 事件几乎不会到。延迟起拖 + 动了才拖
+      // 能同时保证：拖动顺滑 · 双击能接住 · 单击 todo 不会误拖
+      const titlebar = document.querySelector('.dashboard-titlebar');
+      const dashboardRoot = document.querySelector('.dashboard');
+      const DRAG_DELAY_MS = 220;
+      const DRAG_MOVE_THRESHOLD = 3;
+      const DBLCLICK_THRESHOLD_MS = 380;
+
+      function startDrag() {
+        if (!invoke) return;
+        invoke('plugin:window|start_dragging').catch((e) => console.warn('start_dragging failed:', e));
+      }
+
+      function isDraggableSurface(target) {
+        if (!target) return false;
+        const tag = target.tagName ? target.tagName.toLowerCase() : '';
+        if (tag === 'button' || tag === 'input' || tag === 'textarea' || tag === 'a') return false;
+        if (target.closest('.todo-item')) return false;
+        if (target.closest('.dashboard-content')) return false;
+        if (target.closest('.narrow-list')) return false;
+        if (target.closest('.dashboard-context-menu')) return false;
+        if (target.closest('.dashboard-toast')) return false;
+        return true;
+      }
+
+      let pendingDragTimer = null;
+      let pendingDragOrigin = null; // { x, y }
+      let lastClickAt = 0;
+
+      function cancelPendingDrag() {
+        if (pendingDragTimer) {
+          clearTimeout(pendingDragTimer);
+          pendingDragTimer = null;
+        }
+        pendingDragOrigin = null;
+      }
+
+      function onPendingMouseMove(e) {
+        if (!pendingDragOrigin) return;
+        const dx = e.clientX - pendingDragOrigin.x;
+        const dy = e.clientY - pendingDragOrigin.y;
+        if ((dx * dx + dy * dy) > (DRAG_MOVE_THRESHOLD * DRAG_MOVE_THRESHOLD)) {
+          // 鼠标动了 → 立刻起拖，不再等延迟
+          cancelPendingDrag();
+          document.removeEventListener('mousemove', onPendingMouseMove);
+          document.removeEventListener('mouseup', onPendingMouseUp);
+          startDrag();
+        }
+      }
+      function onPendingMouseUp() {
+        // 不拖了，仅处理成一次点击
+        cancelPendingDrag();
+        document.removeEventListener('mousemove', onPendingMouseMove);
+        document.removeEventListener('mouseup', onPendingMouseUp);
+      }
+
+      // titlebar 是“明确拖柄”，立刻起拖、不拦双击
+      if (titlebar) {
+        titlebar.addEventListener('mousedown', (e) => {
+          if (e.button === 0) startDrag();
+        });
+      }
+
+      if (dashboardRoot) {
+        dashboardRoot.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          if (!isDraggableSurface(e.target)) return;
+
+          const now = Date.now();
+          // 双击检测：上一次 mousedown 后不足 380ms → 双击动作
+          if (now - lastClickAt < DBLCLICK_THRESHOLD_MS) {
+            lastClickAt = 0;
+            cancelPendingDrag();
+            document.removeEventListener('mousemove', onPendingMouseMove);
+            document.removeEventListener('mouseup', onPendingMouseUp);
+            e.preventDefault();
+            cycleTransparency();
+            return;
+          }
+          lastClickAt = now;
+
+          // 安排延迟拖动
+          pendingDragOrigin = { x: e.clientX, y: e.clientY };
+          if (pendingDragTimer) clearTimeout(pendingDragTimer);
+          pendingDragTimer = setTimeout(() => {
+            pendingDragTimer = null;
+            pendingDragOrigin = null;
+            document.removeEventListener('mousemove', onPendingMouseMove);
+            document.removeEventListener('mouseup', onPendingMouseUp);
+            startDrag();
+          }, DRAG_DELAY_MS);
+          document.addEventListener('mousemove', onPendingMouseMove);
+          document.addEventListener('mouseup', onPendingMouseUp);
+        });
+      }
+
+      // ─── 收起 ─────────────────────────────
+      const closeBtn = document.getElementById('dashboard-close-btn');
+      if (closeBtn && invoke) {
+        closeBtn.addEventListener('click', async () => {
+          try { await invoke('toggle_dashboard'); } catch (e) { console.warn('toggle_dashboard failed:', e); }
+        });
+      }
+
+      // ─── pin 按钮：前置固定切换（SVG icon 版） ─────────────────
+      const PIN_KEY = 'soulcore_dashboard_pinned';
+      const pinBtn = document.getElementById('dashboard-pin-btn');
+      let pinned = localStorage.getItem(PIN_KEY) === '1';
+
+      async function applyPin() {
+        if (!pinBtn) return;
+        pinBtn.setAttribute('data-pinned', pinned ? 'true' : 'false');
+        pinBtn.setAttribute('aria-pressed', pinned ? 'true' : 'false');
+        pinBtn.title = pinned ? '已前置固定（再点取消）' : '固定置顶';
+        if (!invoke) return;
+        try { await invoke('set_dashboard_pin', { pinned }); }
+        catch (e) { console.warn('set_dashboard_pin failed:', e); }
+      }
+      if (pinBtn) {
+        pinBtn.addEventListener('click', async () => {
+          pinned = !pinned;
+          localStorage.setItem(PIN_KEY, pinned ? '1' : '0');
+          await applyPin();
+        });
+        applyPin();
+      }
+
+      // ─── todo 三态切换（○ → ◐ → ● 循环）+ localStorage ─────
+      // 真数据接入后此段会替换为读取 zhenyuan_quest_v1 today
+      const TODO_KEY = 'soulcore_dashboard_todo_demo';
+      const STATES = ['todo', 'partial', 'done'];
+      const savedStates = JSON.parse(localStorage.getItem(TODO_KEY) || '{}');
+      document.querySelectorAll('.todo-item').forEach(item => {
+        const id = item.dataset.todoId;
+        if (savedStates[id]) item.setAttribute('data-state', savedStates[id]);
+        item.addEventListener('click', () => {
+          const cur = item.getAttribute('data-state') || 'todo';
+          const next = STATES[(STATES.indexOf(cur) + 1) % STATES.length];
+          item.setAttribute('data-state', next);
+          savedStates[id] = next;
+          localStorage.setItem(TODO_KEY, JSON.stringify(savedStates));
+        });
+      });
+
+      // ─── 日/夜自动切换（按时间 + 每 15 分钟更新） ───
+      function updateDayNight() {
+        const h = new Date().getHours();
+        // 6:00-17:59 为日 / 18:00-5:59 为夜
+        const mode = (h >= 6 && h < 18) ? 'day' : 'night';
+        document.body.setAttribute('data-mode', mode);
+      }
+      updateDayNight();
+      setInterval(updateDayNight, 15 * 60 * 1000);
+
+      // ─── 今日日期 meta（"五月廿二 · 戊申"格式占位，未来从主端 lunar 数据接入） ───
+      const todayMeta = document.getElementById('dashboard-today-meta');
+      if (todayMeta) {
+        const d = new Date();
+        const mm = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'][d.getMonth()];
+        const dd = d.getDate();
+        todayMeta.textContent = `${mm} · ${dd}`;
+      }
+
+      // ─── reminders 数据（B1：localStorage demo） ───────────────────
+      // schema: { items: [ { id, time: "HH:MM", title, category } ] }
+      // category: "today" | "long-arc" | "custom"
+      const REMINDERS_KEY = 'soulcore_reminders';
+
+      function pad2(n) { return String(n).padStart(2, '0'); }
+      function nowHHMM() {
+        const d = new Date();
+        return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+      }
+      function hhmmToMinutes(s) {
+        if (typeof s !== 'string') return -1;
+        const m = s.match(/^(\d{1,2}):(\d{2})$/);
+        if (!m) return -1;
+        const h = Number(m[1]);
+        const min = Number(m[2]);
+        if (h < 0 || h > 23 || min < 0 || min > 59) return -1;
+        return h * 60 + min;
+      }
+
+      function seedDemoReminders() {
+        // 围绕"现在"产生几条 placeholder：+10m / +45m / +90m / +110m
+        const now = new Date();
+        const base = now.getHours() * 60 + now.getMinutes();
+        const offsets = [10, 45, 90, 110];
+        const titles = [
+          { title: '内观 · 中丹田留意', category: 'today' },
+          { title: '回信 · 师兄', category: 'today' },
+          { title: '心舍 · 整端推进', category: 'long-arc' },
+          { title: '茶 · 凉一杯', category: 'custom' },
+        ];
+        const items = offsets.map((off, i) => {
+          const m = (base + off) % (24 * 60);
+          const time = pad2(Math.floor(m / 60)) + ':' + pad2(m % 60);
+          return { id: 'r' + (i + 1), time, title: titles[i].title, category: titles[i].category };
+        });
+        return { items };
+      }
+
+      function loadReminders() {
+        try {
+          const raw = localStorage.getItem(REMINDERS_KEY);
+          if (!raw) {
+            const seed = seedDemoReminders();
+            localStorage.setItem(REMINDERS_KEY, JSON.stringify(seed));
+            return seed;
+          }
+          const parsed = JSON.parse(raw);
+          if (!parsed || !Array.isArray(parsed.items)) return { items: [] };
+          return parsed;
+        } catch (e) {
+          console.warn('loadReminders failed:', e);
+          return { items: [] };
+        }
+      }
+
+      // 返回 now 到 now+2h 之间的 items（按时间升序）
+      // 支持跨午夜：如 23:30 时，01:00 也算"未来 90 分钟"
+      function filterUpcoming(items, windowMinutes = 120) {
+        const now = new Date();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        const horizon = nowMin + windowMinutes;
+        const arr = [];
+        for (const it of items) {
+          const m = hhmmToMinutes(it.time);
+          if (m < 0) continue;
+          // 把时间映射到"距 now 多少分钟"，0..1439
+          let delta = m - nowMin;
+          if (delta < 0) delta += 24 * 60;
+          if (delta <= windowMinutes) {
+            arr.push({ ...it, _delta: delta });
+          }
+        }
+        arr.sort((a, b) => a._delta - b._delta);
+        return arr;
+      }
+
+      function fmtDelta(min) {
+        if (min <= 0) return 'now';
+        if (min < 60) return '+' + min + 'm';
+        const h = Math.floor(min / 60);
+        const m = min % 60;
+        return m === 0 ? ('+' + h + 'h') : ('+' + h + 'h' + pad2(m));
+      }
+
+      function renderNarrowList() {
+        const listEl = document.getElementById('narrow-list');
+        const metaEl = document.getElementById('narrow-meta');
+        if (!listEl) return;
+        const data = loadReminders();
+        const upcoming = filterUpcoming(data.items, 120).slice(0, 4);
+        listEl.innerHTML = '';
+        if (metaEl) metaEl.textContent = nowHHMM();
+        if (upcoming.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'narrow-empty';
+          empty.textContent = '近 2 小时 · 无事';
+          listEl.appendChild(empty);
+          return;
+        }
+        for (let i = 0; i < upcoming.length; i++) {
+          const it = upcoming[i];
+          const row = document.createElement('div');
+          row.className = 'narrow-item' + (i === 0 ? ' is-next' : '');
+          row.dataset.reminderId = it.id;
+          const t = document.createElement('span');
+          t.className = 'narrow-time';
+          t.textContent = it.time;
+          const title = document.createElement('span');
+          title.className = 'narrow-title';
+          title.textContent = it.title;
+          const delta = document.createElement('span');
+          delta.className = 'narrow-delta';
+          delta.textContent = fmtDelta(it._delta);
+          row.appendChild(t);
+          row.appendChild(title);
+          row.appendChild(delta);
+          listEl.appendChild(row);
+        }
+      }
+
+      // ─── 模式切换：full / narrow ───────────────────────────────────
+      const DASHBOARD_MODE_KEY = 'soulcore_dashboard_mode';
+      const DASHBOARD_MODES = ['full', 'narrow'];
+      const SIZE_FULL   = { w: 338, h: 400, mw: 280, mh: 340 };
+      const SIZE_NARROW = { w: 338, h: 168, mw: 280, mh: 140 };
+      const modeBtn = document.getElementById('dashboard-mode-btn');
+
+      async function applyDashboardSize(size) {
+        const { w, h, mw, mh } = size;
+        // 优先走 Rust 命令 set_dashboard_size（已注册在 lib.rs invoke_handler）
+        // 必须传 minWidth/minHeight 一起调，否则被 conf 的 minSize 卡住小尺寸
+        if (invoke) {
+          try {
+            await invoke('set_dashboard_size', { width: w, height: h, minWidth: mw, minHeight: mh });
+            return;
+          } catch (e) {
+            console.warn('set_dashboard_size invoke failed, falling back:', e);
+          }
+        }
+        // Fallback：尝试 webviewWindow JS API
+        try {
+          const wv = tauri?.webviewWindow || tauri?.window;
+          const current = wv?.getCurrentWindow ? wv.getCurrentWindow() : (wv?.getCurrent ? wv.getCurrent() : null);
+          if (current && typeof current.setSize === 'function') {
+            const LogicalSize = tauri?.dpi?.LogicalSize || tauri?.window?.LogicalSize;
+            if (LogicalSize) {
+              await current.setSize(new LogicalSize(w, h));
+            } else {
+              await current.setSize({ type: 'Logical', width: w, height: h });
+            }
+          }
+        } catch (e) {
+          console.warn('webviewWindow setSize fallback failed:', e);
+        }
+      }
+
+      async function setDashboardMode(mode) {
+        if (!DASHBOARD_MODES.includes(mode)) mode = 'full';
+        if (!dashboardRoot) return;
+        if (mode === 'narrow') {
+          dashboardRoot.classList.add('mode-narrow');
+          renderNarrowList();
+          await applyDashboardSize(SIZE_NARROW);
+        } else {
+          dashboardRoot.classList.remove('mode-narrow');
+          await applyDashboardSize(SIZE_FULL);
+        }
+        if (modeBtn) {
+          modeBtn.setAttribute('data-mode', mode);
+          modeBtn.setAttribute('aria-pressed', mode === 'narrow' ? 'true' : 'false');
+          modeBtn.title = mode === 'narrow' ? '回到完整模式' : '切换收窄提醒';
+        }
+        localStorage.setItem(DASHBOARD_MODE_KEY, mode);
+      }
+
+      function getStoredDashboardMode() {
+        const saved = localStorage.getItem(DASHBOARD_MODE_KEY);
+        return DASHBOARD_MODES.includes(saved) ? saved : 'full';
+      }
+
+      if (modeBtn) {
+        modeBtn.addEventListener('click', async () => {
+          const cur = modeBtn.getAttribute('data-mode') || 'full';
+          const next = cur === 'narrow' ? 'full' : 'narrow';
+          await setDashboardMode(next);
+        });
+      }
+
+      // 启动还原模式（无论 full 还是 narrow 都强制 setSize 一次，
+      // 确保 widget 启动到正确尺寸 + minSize，避免上次 mode 切换残留）
+      const initialMode = getStoredDashboardMode();
+      setDashboardMode(initialMode);
+
+      // narrow mode 下每分钟刷新一次列表（保证时间窗滚动）
+      setInterval(() => {
+        if (dashboardRoot && dashboardRoot.classList.contains('mode-narrow')) {
+          renderNarrowList();
+        }
+      }, 60 * 1000);
+
+      // ─── 透明度模式 · 右键菜单 + 双击切换（transparent / frosted / hover） ───
+      const TRANSPARENCY_KEY = 'soulcore_dashboard_transparency';
+      const TRANSPARENCY_MODES = ['transparent', 'frosted', 'hover'];
+      const TRANSPARENCY_LABELS = {
+        transparent: 'TRANSPARENT · 透',
+        frosted:     'FROSTED · 半透',
+        hover:       'HOVER · 悬停'
+      };
+      const ctxMenu = document.getElementById('dashboard-context-menu');
+      const ctxItems = ctxMenu ? Array.from(ctxMenu.querySelectorAll('.dashboard-context-item')) : [];
+      const toastEl = document.getElementById('dashboard-toast');
+      let toastTimer = null;
+
+      function getStoredMode() {
+        const saved = localStorage.getItem(TRANSPARENCY_KEY);
+        return TRANSPARENCY_MODES.includes(saved) ? saved : 'frosted';
+      }
+
+      function setMode(mode, opts) {
+        const o = opts || {};
+        if (!TRANSPARENCY_MODES.includes(mode)) mode = 'frosted';
+        if (!dashboardRoot) return;
+        TRANSPARENCY_MODES.forEach(m => dashboardRoot.classList.remove('mode-' + m));
+        dashboardRoot.classList.add('mode-' + mode);
+        localStorage.setItem(TRANSPARENCY_KEY, mode);
+        ctxItems.forEach(it => {
+          it.setAttribute('data-active', it.dataset.mode === mode ? 'true' : 'false');
+        });
+        if (o.toast) showTransparencyToast(mode);
+      }
+
+      function cycleTransparency() {
+        const cur = getStoredMode();
+        const idx = TRANSPARENCY_MODES.indexOf(cur);
+        const next = TRANSPARENCY_MODES[(idx + 1) % TRANSPARENCY_MODES.length];
+        setMode(next, { toast: true });
+      }
+
+      function showTransparencyToast(mode) {
+        if (!toastEl) return;
+        toastEl.textContent = TRANSPARENCY_LABELS[mode] || mode;
+        toastEl.classList.add('is-visible');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toastEl.classList.remove('is-visible');
+          toastTimer = null;
+        }, 900);
+      }
+
+      // 启动还原（不出 toast）
+      setMode(getStoredMode());
+
+      function closeCtxMenu() {
+        if (!ctxMenu) return;
+        ctxMenu.classList.remove('is-open');
+        ctxMenu.setAttribute('aria-hidden', 'true');
+      }
+
+      function openCtxMenu(clientX, clientY) {
+        if (!ctxMenu || !dashboardRoot) return;
+        // 先显示以测量尺寸（用 visibility hidden trick：直接加 class 再算）
+        ctxMenu.classList.add('is-open');
+        ctxMenu.setAttribute('aria-hidden', 'false');
+        const rootRect = dashboardRoot.getBoundingClientRect();
+        const menuRect = ctxMenu.getBoundingClientRect();
+        // 鼠标位置转为相对 dashboard 容器的坐标
+        let x = clientX - rootRect.left;
+        let y = clientY - rootRect.top;
+        // 限制在 widget bound 内（留 8px 内边距，避开圆角溢出）
+        const pad = 8;
+        const maxX = rootRect.width - menuRect.width - pad;
+        const maxY = rootRect.height - menuRect.height - pad;
+        if (x > maxX) x = maxX;
+        if (y > maxY) y = maxY;
+        if (x < pad) x = pad;
+        if (y < pad) y = pad;
+        ctxMenu.style.left = x + 'px';
+        ctxMenu.style.top = y + 'px';
+      }
+
+      if (ctxMenu && dashboardRoot) {
+        dashboardRoot.addEventListener('contextmenu', (e) => {
+          // 点在菜单自身上不重新触发
+          if (e.target.closest('.dashboard-context-menu')) return;
+          e.preventDefault();
+          openCtxMenu(e.clientX, e.clientY);
+        });
+
+        ctxItems.forEach(it => {
+          it.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const mode = it.dataset.mode;
+            setMode(mode, { toast: true });
+            closeCtxMenu();
+          });
+        });
+
+        // 点其他位置关闭
+        document.addEventListener('mousedown', (e) => {
+          if (!ctxMenu.classList.contains('is-open')) return;
+          if (e.target.closest('.dashboard-context-menu')) return;
+          closeCtxMenu();
+        });
+
+        // Esc 关闭
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && ctxMenu.classList.contains('is-open')) {
+            closeCtxMenu();
+          }
+        });
+
+        // 在 dashboard 之外（如出现）也阻止系统默认菜单
+        document.addEventListener('contextmenu', (e) => {
+          if (!e.target.closest('.dashboard')) e.preventDefault();
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

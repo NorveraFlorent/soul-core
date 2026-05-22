@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "norvera",
+      "name": "soul-core",
       "devDependencies": {
         "@tauri-apps/cli": "^2",
       },
