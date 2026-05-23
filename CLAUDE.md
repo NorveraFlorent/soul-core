@@ -19,6 +19,9 @@ macOS 桌面 app（Tauri v2）—— 日常修证 + 长程项目 + 短程打勾�
 - **Tauri v2 默认 disable native dialogs**：`alert/confirm/prompt` 无声 block UI。心舍用内建 `window.soulConfirm` / `soulAlert` / `soulPrompt`（自包含 modal helper · 调子复刻 onboarding modal）。**禁止再写 native dialog**。
 - **dashboard widget setSize**：必须传 `min_width/min_height` 同步调（用 Rust `set_dashboard_size` 4 参数版本）。conf 的 minHeight 静态约束会卡住小尺寸，set_size 前先 set_min_size 放开。
 - **背景 session worktree isolation**：subagent worktree return 时**如果未 commit 会自动清理**（unstaged 算"no changes"）。派遣 subagent prompt 必须明确"在 worktree 里 commit 到 branch + 同时写 patch 到 /tmp 双保险"。
+- **webview → 本地 server 必须走 Rust 代理**：webview origin 是 `tauri://localhost`，调 `127.0.0.1:3000`（织）是跨域。织 server 未设 ACAO 头（红线不动）。前端 `tauriFetch` 走 `invoke('zhi_proxy', ...)` 让 reqwest 在 Rust 端发请求，无 CORS 限制。**禁止**前端直接 `fetch('http://127.0.0.1:3000/...')`。
+- **Rust 调本地 server 必须 `.no_proxy()`**：reqwest 默认 honor 系统/环境代理（VPN / clash 等）。本地 127.0.0.1 也会被拦走代理 → 502 Bad Gateway。所有 reqwest::Client 调本地服务时显式 `.no_proxy()`。
+- **onboarding finalize 必须 set ONBOARDED_KEY**：之前漏写导致每次启动都召唤 modal "上次走完了"。`finalize()` 末尾 `localStorage.setItem(ONBOARDED_KEY, '1')`；启动时若 `isOnboardComplete() && !ONBOARDED_KEY` 也自动补设（retro-fit）。
 
 ## CC 桥接关键
 
@@ -62,6 +65,46 @@ macOS 桌面 app（Tauri v2）—— 日常修证 + 长程项目 + 短程打勾�
 - 对话历史 (`.cc-bay-history`): 静态 empty 态（"回廊静 / 和章鱼说第一句"）。后续接 `~/.claude/projects/<encoded-cwd>/*.jsonl`
 - panel 内 inline `<style>` + `<script>` 自包含
 
+### CC 昵称 · getter pattern（全 app 单点设置）
+
+- 数据：`state.cc_nickname`（空字符串走 fallback `'CC'`）
+- getter：`getCcName()` —— 任何位置需要昵称都用它，不要 hardcode `"CC"`
+- 注入器：`applyCcNickname()` 在 `renderAll()` 末尾自动跑，遍历两类标记：
+  - `[data-cc-name]` → `textContent` 整体替换为 `getCcName()`
+  - `[data-cc-name-tpl="模板包含 {cc}"]` → 模板替换；INPUT/TEXTAREA 写 placeholder，其他写 textContent
+  - contenteditable 在编辑中 (`document.activeElement === el`) 跳过覆盖
+- 入口：panel-cc ambience 区 `<昵称> 在听` 那个 inline edit span (`#cc-name-edit` contenteditable)
+  - blur / Enter 提交 → 写 state → saveState → applyCcNickname 全 UI 刷新
+  - Esc 还原；空值 fallback 'CC'
+- 写新 UI 时**任何对外显示 "CC" 字串**都要标 `data-cc-name` 或 `data-cc-name-tpl`，不要写死
+
+## panel-tasks · 今日
+
+- **真数据**：`state.task_groups[]`（onboarding draft → finalize merge）；首次手动 ⏰ 编辑或 CC ops 改动时把 `getTaskGroups()` 的 fallback 拷贝到 state（不污染 const）
+- 顶部入口：`+ 添加任务` / `和 {cc} 商量` 两按钮（仿 panel-long actions，暖色调而非长程蓝）
+- task 视觉：每组 `.task-group` 加 accent-warm 6% 底色 + radius 14 + border accent-warm 14%
+- **time schema**：task 可选 `time: "HH:MM"` 或 `"HH:MM-HH:MM"` 或不设
+  - renderTasks 按 time 升序排同组内 task（无 time 沉底）
+  - task name 旁小字暖色显示 time
+  - hover 出 ⏰ 编辑按钮 → soulPrompt → 校验 `/^\d{1,2}:\d{2}(-\d{1,2}:\d{2})?$/`
+- **CC ops 协议**：panel=tasks 时 prefix 注入 task_groups 简版 + `attrs_id_pool` + ops schema
+- fence：`<task-groups-update>[{op,...}]</task-groups-update>`
+- 5 op：`add_group` / `add_tasks` / `update_task` / `delete_task` / `delete_group`
+- task id 形如 `<group-id>-N`；patch.time="" 清除时间
+- send() 同时抽 long + tasks 两种 fence，分别 soulConfirm 预览
+
+## 织连接 · zhi-bar + Rust 代理
+
+- 织 server: `~/repos/zhi` · `bun run dev` · port 3000
+- **前端访问必须走 Rust 代理**：webview 跨域 + 系统代理拦截双重问题（见红线）
+- 前端 `tauriFetch(path, options)` 内部 invoke `zhi_proxy`，返回类 Response 对象（ok/status/json/text）。zhiHealth / zhiList / zhiWrite 等上游不动
+- zhi-bar 三个按钮：
+  - `#zhi-refresh` ↻ 重新拉取
+  - `#zhi-start` 启动织（仅 unavailable 时显示）→ invoke `start_zhi_dev` spawn `bun run dev` 注入 brew PATH detach → polling 1.2s 起每 800ms 重试 max 8s
+  - `#zhi-diagnose` 诊断（永久显示）→ 直接 alert invoke 是否就绪 / zhi_proxy status / body / zhiState，不依赖 devtools
+- `state.journal_config.zhi_sync_default` 一次性接 `#zhi-sync-on` / `#zhi-show-on` 默认 checked（`dataset.initialized` 防覆盖）
+- devtools：Cargo.toml tauri features 含 `"devtools"`，release build 也启用 inspector（Cmd+Option+I 或右键）
+
 ## panel-long · 长程
 
 - 蓝色调强调 (#2486b9)，跟 sidebar nav-dot 一致
@@ -84,7 +127,7 @@ macOS 桌面 app（Tauri v2）—— 日常修证 + 长程项目 + 短程打勾�
 ```
 src/index.html                       # 主端 UI + JS（含 panel-cc/panel-long inline · soul-modal helper · 各 fork 接口）
 src/dashboard.html                   # widget 浮窗（self-contained）
-src-tauri/src/lib.rs                 # Rust 后端（cc_chat / toggle_dashboard / set_dashboard_pin / set_dashboard_size / memento_counts）
+src-tauri/src/lib.rs                 # Rust 后端（cc_chat / toggle_dashboard / set_dashboard_pin / set_dashboard_size / memento_counts / start_zhi_dev / zhi_proxy）
 src-tauri/src/main.rs                # soul_core_lib::run()
 src-tauri/tauri.conf.json            # productName=Soul-Core / identifier=com.norvera.soulcore / 毛玻璃
 src-tauri/tauri.test.conf.json       # productName=Soul-Core-test / identifier=com.norvera.soulcore.test
