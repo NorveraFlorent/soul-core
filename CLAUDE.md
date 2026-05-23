@@ -38,7 +38,9 @@ macOS 桌面 app（Tauri v2）—— 日常修证 + 长程项目 + 短程打勾�
 - 8 条硅基行为原则（P1-P8）注入 prefix（详见 README 给硅基章节）
 - 独立 cc session（subdir="onboarding"）+ 独立 localStorage keys（`soulcore_onboard_*`）不污染主对话
 - 开场预告：modal 一开 4 行温和诗意话语逐行浮起 + 心跳，覆盖 CC loading 4-8s 空白
-- finalize() 自动 merge `draft.long_projects` 进 `state.long_projects`（同 id skip，保留用户已有数据）
+- finalize() 自动 merge draft 进 state（幂等）：`long_projects`（同 id skip）/ `task_groups` / `attributes` / `shop_items` / `journal_config`（仅 state 缺时整体写）；`records` / `ledger` 待 panel 改造后再 merge（chunk 2）
+- 主端 panel 渲染走 `getTaskGroups()` / `getAttributes()` / `getShopItems()`：state.<key> 优先，const fallback
+- 旧用户启动时若 state 缺这些字段但 draft 还在，自动补 merge 一次（onboard IIFE else 分支）
 
 ## Dashboard widget · 桌面小端
 

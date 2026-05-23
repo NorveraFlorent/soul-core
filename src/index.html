@@ -570,7 +570,72 @@ body::before {
 #header-date { display: none; }
 
 /* ───────────────────────── Tasks panel ───────────────────────── */
-.task-group { margin-bottom: 22px; }
+.task-group {
+  margin-bottom: 18px;
+  padding: 16px 18px 12px;
+  background: color-mix(in srgb, var(--accent-warm) 6%, transparent);
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent-warm) 14%, transparent);
+}
+.task-group:last-child { margin-bottom: 8px; }
+
+/* 今日 actions —— 仿 panel-long actions 调子，暖色调 */
+.task-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+.task-action {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--accent-warm) 30%, transparent);
+  color: var(--text-soft);
+  font-family: var(--serif);
+  font-size: 12.5px;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  padding: 7px 18px;
+  border-radius: 22px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.task-action:hover {
+  background: color-mix(in srgb, var(--accent-warm) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent-warm) 50%, transparent);
+  color: var(--accent-warm);
+}
+.task-actions-hint {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+}
+
+/* task time 显示 + 编辑按钮 */
+.task-time {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--accent-warm);
+  margin-left: 10px;
+  opacity: 0.8;
+}
+.task-time-edit {
+  visibility: hidden;
+  background: transparent;
+  border: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+  margin-left: 4px;
+  border-radius: 4px;
+  transition: background-color 0.18s ease;
+}
+.task-item:hover .task-time-edit { visibility: visible; }
+.task-time-edit:hover { background: color-mix(in srgb, var(--accent-warm) 14%, transparent); color: var(--accent-warm); }
 .task-group-title {
   font-family: var(--mono);
   font-size: 10px;
@@ -2083,7 +2148,7 @@ body:has(.onboard-modal.visible) .window {
       </div>
       <div class="nav-item" data-panel="cc">
         <span class="nav-dot" style="--dot: #d68a55"></span>
-        <span class="nav-zh" style="color: rgb(151, 86, 28)">CC</span>
+        <span class="nav-zh" style="color: rgb(151, 86, 28)" data-cc-name>CC</span>
         <span class="nav-en" style="color: rgb(214, 138, 85)">Companion</span>
       </div>
     </nav>
@@ -2142,6 +2207,12 @@ body:has(.onboard-modal.visible) .window {
     <!-- ═══════ 6 个原有 panel (id 保留, 内部 DOM 全保留) ═══════ -->
 
     <div class="panel active" id="panel-tasks">
+      <!-- 今日 actions: 调子参照 panel-long，用暖色调；增删改经 CC 协商或手动新增 -->
+      <div class="task-actions">
+        <button type="button" class="task-action" data-task-action="add">+ 添加任务</button>
+        <button type="button" class="task-action" data-task-action="chat" data-cc-name-tpl="和 {cc} 商量">和 CC 商量</button>
+        <span class="task-actions-hint">点 ○ 完成；时间 / 增删改经下一档对话或 ⏰ 直接编辑</span>
+      </div>
       <div id="tasks-container"></div>
     </div>
 
@@ -2192,6 +2263,8 @@ body:has(.onboard-modal.visible) .window {
         <label class="zhi-toggle"><input type="checkbox" id="zhi-show-on" checked> <span>显示织条目</span></label>
         <input type="date" id="zhi-jump-date" class="zhi-date" title="跳转到某天">
         <button class="zhi-refresh" id="zhi-refresh" title="重新连接 / 拉取织">↻</button>
+        <button class="zhi-refresh" id="zhi-start" title="启动织 dev server (~/repos/zhi · bun run dev)" hidden>启动织</button>
+        <button class="zhi-refresh" id="zhi-diagnose" title="诊断织连接状态（不依赖 devtools）">诊断</button>
         <button class="zhi-refresh" id="zhi-names" title="设置作者名（与织同 key）">作者名</button>
         <button class="zhi-migrate" id="zhi-migrate" title="把现有本地日记一次性同步到织">迁移本地日记 →</button>
       </div>
@@ -2487,7 +2560,7 @@ body:has(.onboard-modal.visible) .window {
       <!-- CC 对话入口区：在 panel-long 顶部，引导用户和 CC 商量长程 -->
       <div class="long-arc-actions">
         <button type="button" class="long-arc-action" data-long-action="add">+ 添加项目</button>
-        <button type="button" class="long-arc-action" data-long-action="chat">和 CC 商量</button>
+        <button type="button" class="long-arc-action" data-long-action="chat" data-cc-name-tpl="和 {cc} 商量">和 CC 商量</button>
         <span class="long-arc-actions-hint">点击 sub-task 切换 ○ ◐ ●；项目本身的增删改通过 CC 对话</span>
       </div>
 
@@ -2584,6 +2657,22 @@ body:has(.onboard-modal.visible) .window {
           color: var(--text-warm);
           margin-bottom: 6px;
         }
+        .cc-bay-state .cc-name-edit {
+          outline: none;
+          padding: 0 4px;
+          border-radius: 4px;
+          min-width: 1em;
+          transition: background-color 0.2s ease, box-shadow 0.2s ease;
+          cursor: text;
+        }
+        .cc-bay-state .cc-name-edit:hover {
+          background: color-mix(in srgb, var(--accent-warm) 12%, transparent);
+        }
+        .cc-bay-state .cc-name-edit:focus {
+          background: color-mix(in srgb, var(--accent-warm) 18%, transparent);
+          box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-warm) 40%, transparent);
+        }
+        .cc-bay-state .state-zh-divider { letter-spacing: 0.2em; }
         .cc-bay-state .state-en {
           font-family: var(--mono);
           font-size: 9.5px;
@@ -3388,7 +3477,11 @@ body:has(.onboard-modal.visible) .window {
             <circle class="ink-core"    cx="0" cy="0" r="1.6"></circle>
           </svg>
           <div class="cc-bay-state">
-            <div class="state-zh" data-state-zh>在&nbsp;听</div>
+            <div class="state-zh">
+              <span class="cc-name-edit" id="cc-name-edit" contenteditable="true" spellcheck="false" data-cc-name>CC</span>
+              <span class="state-zh-divider"> </span>
+              <span data-state-zh>在&nbsp;听</span>
+            </div>
             <div class="state-en"><em data-state-en>listening</em> · <span data-state-tag>ink at rest</span></div>
           </div>
         </div>
@@ -3502,7 +3595,7 @@ body:has(.onboard-modal.visible) .window {
     <div class="cc-portrait">
       <div id="clawd" class="octo"></div>
       <div class="cc-meta">
-        <div class="cc-name">CC</div>
+        <div class="cc-name" data-cc-name>CC</div>
         <div class="cc-state"><span class="dot"></span>在听</div>
         <button class="cc-new-session" id="cc-new-session" title="开启新对话（保留旧 session 文件，新 UUID）">新对话</button>
       </div>
@@ -3510,7 +3603,7 @@ body:has(.onboard-modal.visible) .window {
     <div class="cc-divider"></div>
     <div class="cc-messages" id="cc-messages"></div>
     <div class="cc-input-row">
-      <textarea id="cc-input" placeholder="对 CC 说……（Shift+Enter 换行）" rows="1"></textarea>
+      <textarea id="cc-input" placeholder="对 CC 说……（Shift+Enter 换行）" data-cc-name-tpl="对 {cc} 说……（Shift+Enter 换行）" rows="1"></textarea>
       <span class="send" id="cc-send">↵</span>
     </div>
   </aside>
@@ -3867,6 +3960,39 @@ function checkDateChange() {
   }
 }
 
+// ============= onboarding draft → state 读取桥 =============
+// state.<key> 存在且非空时用；否则 fallback 到上方 const。
+// state.task_groups / state.attributes / state.shop_items 写入由 finalize() 控制（chunk 1）。
+const getTaskGroups = () => (Array.isArray(state.task_groups) && state.task_groups.length) ? state.task_groups : TASK_GROUPS;
+const getAttributes = () => (Array.isArray(state.attributes) && state.attributes.length) ? state.attributes : ATTRIBUTES;
+const getShopItems  = () => (Array.isArray(state.shop_items) && state.shop_items.length) ? state.shop_items : SHOP_ITEMS;
+
+// ============= CC 昵称 · getter + 全 UI 模板填充 =============
+// state.cc_nickname 单点设置，下面 applyCcNickname() 遍历两类 element 注入：
+// - [data-cc-name]        → 元素内容（textContent）整体替换为昵称
+// - [data-cc-name-tpl]    → 模板字符串里 {cc} 占位替换；input/textarea 写 placeholder，其他写 textContent
+function getCcName() {
+  const n = (state.cc_nickname || '').trim();
+  return n || 'CC';
+}
+function applyCcNickname() {
+  const name = getCcName();
+  document.querySelectorAll('[data-cc-name]').forEach(el => {
+    if (el === document.activeElement) return; // contenteditable 编辑中不覆盖
+    if (el.textContent !== name) el.textContent = name;
+  });
+  document.querySelectorAll('[data-cc-name-tpl]').forEach(el => {
+    const tpl = el.dataset.ccNameTpl;
+    if (!tpl) return;
+    const text = tpl.replace(/\{cc\}/g, name);
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+      if (el.placeholder !== text) el.placeholder = text;
+    } else {
+      if (el.textContent !== text) el.textContent = text;
+    }
+  });
+}
+
 // ============= 渲染 =============
 
 function renderHeader() {
@@ -3886,20 +4012,34 @@ function renderTasks() {
   const container = document.getElementById('tasks-container');
   const week = weekStr();
 
-  container.innerHTML = TASK_GROUPS.map(group => `
-    <div class="task-group">
-      <div class="task-group-title">${group.name}</div>
+  const groups = getTaskGroups();
+  const attrs = getAttributes();
+  // 同组内按 time 升序（无 time 沉底）
+  const sortedGroups = groups.map(g => ({
+    ...g,
+    tasks: [...(g.tasks || [])].sort((a, b) => {
+      const ta = a.time ? a.time : '99:99';
+      const tb = b.time ? b.time : '99:99';
+      return ta.localeCompare(tb);
+    })
+  }));
+  container.innerHTML = sortedGroups.map(group => `
+    <div class="task-group" data-group-id="${group.id}">
+      <div class="task-group-title">${escapeHtml(group.name)}</div>
       ${group.tasks.map(task => {
         const isDone = task.weekly
           ? state.weeklyTasks[task.id] === week
           : state.todayTasks[task.id];
+        const taskAttrs = Array.isArray(task.attrs) ? task.attrs : [];
+        const timeStr = task.time ? `<span class="task-time">${escapeHtml(task.time)}</span>` : '';
         return `
-          <div class="task-item ${isDone ? 'done' : ''}" data-task="${task.id}" data-weekly="${task.weekly || false}">
+          <div class="task-item ${isDone ? 'done' : ''}" data-task="${task.id}" data-group="${group.id}" data-weekly="${task.weekly || false}">
             <div class="task-check"></div>
             <div class="task-info">
-              <div class="task-name">${task.name}</div>
-              <div class="task-meta">${task.weekly ? 'WEEKLY' : ''} ${task.attrs.length ? '· ' + task.attrs.map(a => ATTRIBUTES.find(x=>x.id===a)?.name).join(' / ') : ''}</div>
+              <div class="task-name">${escapeHtml(task.name)}${timeStr}</div>
+              <div class="task-meta">${task.weekly ? 'WEEKLY' : ''} ${taskAttrs.length ? '· ' + taskAttrs.map(a => attrs.find(x=>x.id===a)?.name).filter(Boolean).join(' / ') : ''}</div>
             </div>
+            <button class="task-time-edit" data-time-edit="${task.id}" data-group-id="${group.id}" title="设置时间">⏰</button>
             <div class="task-points ${task.minus ? 'minus' : ''}">${task.points > 0 ? '+' : ''}${task.points}</div>
           </div>
         `;
@@ -3908,10 +4048,49 @@ function renderTasks() {
   `).join('');
 
   container.querySelectorAll('.task-item').forEach(el => {
-    el.addEventListener('click', () => {
+    el.addEventListener('click', (e) => {
+      // 点 ⏰ 编辑按钮不触发任务勾选
+      if (e.target.closest('.task-time-edit')) return;
       const taskId = el.dataset.task;
       const isWeekly = el.dataset.weekly === 'true';
       toggleTask(taskId, isWeekly);
+    });
+  });
+
+  // 时间编辑按钮：soulPrompt 输入 HH:MM 或 HH:MM-HH:MM 或 空（清除）
+  container.querySelectorAll('.task-time-edit').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const taskId = btn.dataset.timeEdit;
+      const groupId = btn.dataset.groupId;
+      const groups = getTaskGroups();
+      const g = groups.find(x => x.id === groupId);
+      const t = g?.tasks?.find(x => x.id === taskId);
+      if (!t) return;
+      const cur = t.time || '';
+      const v = await window.soulPrompt({
+        message: `「${t.name}」 设置时间\n格式：HH:MM 单点（如 06:00），或 HH:MM-HH:MM 段（如 06:00-07:00），留空清除`,
+        defaultValue: cur,
+        placeholder: '06:00 或 06:00-07:00',
+        primaryLabel: '设置',
+      });
+      if (v === null) return; // 取消
+      const trimmed = (v || '').trim();
+      if (trimmed && !/^\d{1,2}:\d{2}(-\d{1,2}:\d{2})?$/.test(trimmed)) {
+        await window.soulAlert({ message: '格式不对，应为 HH:MM 或 HH:MM-HH:MM' });
+        return;
+      }
+      // 写入 state（getTaskGroups 走 fallback 时引用的是 const TASK_GROUPS，会污染——只写 state.task_groups）
+      if (!Array.isArray(state.task_groups) || !state.task_groups.length) {
+        // 第一次手动改时把当前 getTaskGroups 拷贝到 state（让后续编辑落到 state 而不是 const）
+        state.task_groups = JSON.parse(JSON.stringify(getTaskGroups()));
+      }
+      const sg = state.task_groups.find(x => x.id === groupId);
+      const st = sg?.tasks?.find(x => x.id === taskId);
+      if (!st) return;
+      if (trimmed) st.time = trimmed; else delete st.time;
+      saveState();
+      renderTasks();
     });
   });
 }
@@ -3919,7 +4098,7 @@ function renderTasks() {
 function renderAttrs() {
   const container = document.getElementById('attrs-container');
   const max = Math.max(...Object.values(state.attrs), 100);
-  container.innerHTML = ATTRIBUTES.map(attr => {
+  container.innerHTML = getAttributes().map(attr => {
     const val = state.attrs[attr.id] || 0;
     const pct = Math.min((val / max) * 100, 100);
     return `
@@ -4029,6 +4208,10 @@ function toggleDay(date) {
 function renderJournal() {
   const history = document.getElementById('journal-history');
   if (!history) return;
+  // onboarding 自定义 placeholder（state.journal_config?.placeholder）覆盖默认；幂等
+  const journalInput = document.getElementById('journal-input');
+  const ph = state.journal_config?.placeholder;
+  if (journalInput && typeof ph === 'string' && ph.length) journalInput.placeholder = ph;
   const showZhi = document.getElementById('zhi-show-on')?.checked && zhiState.available;
 
   // 本地条目
@@ -4153,7 +4336,7 @@ function renderLedger() {
 
 function renderShop() {
   const container = document.getElementById('shop-items');
-  container.innerHTML = SHOP_ITEMS.map(item => `
+  container.innerHTML = getShopItems().map(item => `
     <div class="shop-item">
       <div class="shop-item-info">
         <div class="shop-item-name">${item.name}</div>
@@ -4189,11 +4372,12 @@ function escapeHtml(s) {
 
 function toggleTask(taskId, isWeekly) {
   let task;
-  for (const g of TASK_GROUPS) {
+  for (const g of getTaskGroups()) {
     task = g.tasks.find(t => t.id === taskId);
     if (task) break;
   }
   if (!task) return;
+  const taskAttrs = Array.isArray(task.attrs) ? task.attrs : [];
 
   const week = weekStr();
   const isDone = isWeekly ? state.weeklyTasks[taskId] === week : state.todayTasks[taskId];
@@ -4203,13 +4387,13 @@ function toggleTask(taskId, isWeekly) {
     else delete state.todayTasks[taskId];
     state.points -= task.points;
     if (!task.minus) state.totalEarned -= task.points;
-    task.attrs.forEach(a => { state.attrs[a] = Math.max(0, (state.attrs[a] || 0) - 2); });
+    taskAttrs.forEach(a => { state.attrs[a] = Math.max(0, (state.attrs[a] || 0) - 2); });
   } else {
     if (isWeekly) state.weeklyTasks[taskId] = week;
     else state.todayTasks[taskId] = true;
     state.points += task.points;
     if (!task.minus) state.totalEarned += task.points;
-    task.attrs.forEach(a => { state.attrs[a] = (state.attrs[a] || 0) + 2; });
+    taskAttrs.forEach(a => { state.attrs[a] = (state.attrs[a] || 0) + 2; });
 
     const arr = task.minus ? ENCOURAGEMENTS_MINUS : ENCOURAGEMENTS_PLUS;
     showToast(task.points, arr[Math.floor(Math.random() * arr.length)]);
@@ -4301,7 +4485,7 @@ async function deleteLedger(idx) {
 }
 
 async function redeem(itemId) {
-  const item = SHOP_ITEMS.find(i => i.id === itemId);
+  const item = getShopItems().find(i => i.id === itemId);
   if (!item || state.points < item.cost) return;
   if (!(await soulConfirm({ message: `兑换：${item.name}\n消耗 ${item.cost} 积分？`, primaryLabel: '兑换' }))) return;
   state.points -= item.cost;
@@ -4377,7 +4561,7 @@ function renderLong() {
     list.innerHTML = `
       <div class="long-arc-empty">
         <div class="long-arc-empty-zh">长程是慢的</div>
-        <div class="long-arc-empty-hint">和 CC 商量你养着的那几件事 · 「+ 添加项目」开始</div>
+        <div class="long-arc-empty-hint">和 ${getCcName()} 商量你养着的那几件事 · 「+ 添加项目」开始</div>
       </div>`;
     return;
   }
@@ -4448,6 +4632,25 @@ function bindLongActions() {
   });
 }
 
+// 今日 panel · 添加任务 / 和 CC 商量 入口（预填 cc-input）
+function bindTasksActions() {
+  document.querySelectorAll('#panel-tasks .task-action').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.taskAction;
+      const ccInput = document.getElementById('cc-input');
+      if (!ccInput) return;
+      const seed = action === 'add'
+        ? '帮我加一个今日任务，是'
+        : '聊聊我的今日——';
+      ccInput.value = seed;
+      ccInput.focus();
+      ccInput.setSelectionRange(ccInput.value.length, ccInput.value.length);
+      const ccBar = document.querySelector('.b-cc');
+      if (ccBar) ccBar.classList.add('expanded');
+    });
+  });
+}
+
 function renderAll() {
   checkDateChange();
   renderHeader();
@@ -4459,6 +4662,7 @@ function renderAll() {
   renderLedger();
   renderShop();
   renderLong();
+  applyCcNickname();
 }
 
 // ============= 初始化 =============
@@ -4484,6 +4688,34 @@ document.getElementById('reset-btn').addEventListener('click', resetAll);
 
 renderAll();
 bindLongActions();
+bindTasksActions();
+bindCcNicknameEdit();
+
+// CC 昵称 inline edit · 入口在 panel-cc ambience 的 `<昵称> 在听` 那个 span
+// blur / Enter 提交：写 state.cc_nickname → saveState → applyCcNickname 全 UI 刷新
+function bindCcNicknameEdit() {
+  const el = document.getElementById('cc-name-edit');
+  if (!el) return;
+  const commit = () => {
+    const raw = (el.textContent || '').trim();
+    const next = raw || 'CC';
+    if (next !== (state.cc_nickname || 'CC')) {
+      state.cc_nickname = next === 'CC' ? '' : next; // 还原 CC 时存空字符串走 getter fallback
+      saveState();
+    }
+    el.textContent = next; // 视觉同步（裁掉前后空格）
+    applyCcNickname();
+  };
+  el.addEventListener('blur', commit);
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      el.textContent = getCcName();
+      el.blur();
+    }
+  });
+}
 
 // 每分钟检查一次日期变化（跨日重置）
 setInterval(checkDateChange, 60000);
@@ -4549,10 +4781,31 @@ setInterval(checkDateChange, 60000);
 // zhiState 已在脚本顶部用 var 提升，此处只声明常量
 const ZHI_BASE = 'http://127.0.0.1:3000';
 
+// webview origin (tauri://localhost) → http://127.0.0.1:3000 是跨域，浏览器 CORS 拦
+// zhi server 没设 Access-Control-Allow-Origin（红线: 不动 zhi 源码），所以走 Rust 代理（reqwest 原生）
+// 返回类 Response 对象（ok / status / json() / text()）让上游 zhiHealth / zhiList / zhiWrite 等不用大改
 async function tauriFetch(path, options = {}) {
-  const t = window.__TAURI__;
-  if (t?.http?.fetch) return t.http.fetch(ZHI_BASE + path, options);
-  return fetch(ZHI_BASE + path, options);  // browser fallback
+  const invoke = window.__TAURI__?.core?.invoke;
+  if (invoke) {
+    try {
+      const method = (options.method || 'GET').toUpperCase();
+      const body = options.body != null ? String(options.body) : null;
+      const r = await invoke('zhi_proxy', { method, path, body });
+      const status = r.status;
+      const text = r.body || '';
+      return {
+        ok: status >= 200 && status < 300,
+        status,
+        async json() { return JSON.parse(text); },
+        async text() { return text; }
+      };
+    } catch (e) {
+      console.warn('[zhi-proxy] invoke fail:', e);
+      return { ok: false, status: 0, async json() { return null; }, async text() { return ''; } };
+    }
+  }
+  // 浏览器 fallback（非 Tauri 环境）
+  return fetch(ZHI_BASE + path, options);
 }
 
 async function zhiHealth() {
@@ -4610,7 +4863,7 @@ function setZhiStatusDim(text) {
 }
 
 function zhiSetControlsEnabled(on) {
-  const tip = on ? '' : '织未启动 · 请在 ~/repos/zhi 跑 bun run dev 后点 ↻';
+  const tip = on ? '' : '织未启动 · 点「启动织」一键拉起，或在 ~/repos/zhi 跑 bun run dev 后点 ↻';
   ['zhi-sync-on', 'zhi-show-on'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -4623,9 +4876,23 @@ function zhiSetControlsEnabled(on) {
     mig.disabled = !on;
     mig.title = on ? '把现有本地日记一次性同步到织' : tip;
   }
+  // 织未起时显示「启动织」按钮，已起则隐藏
+  const start = document.getElementById('zhi-start');
+  if (start) start.hidden = !!on;
 }
 
 async function zhiInit() {
+  // onboarding 时填的 zhi_sync_default 接入 checkbox 默认值（一次性，用户后续手动切换自己）
+  try {
+    const def = state.journal_config?.zhi_sync_default;
+    if (typeof def === 'boolean') {
+      const syncEl = document.getElementById('zhi-sync-on');
+      const showEl = document.getElementById('zhi-show-on');
+      if (syncEl && !syncEl.dataset.initialized) { syncEl.checked = def; syncEl.dataset.initialized = '1'; }
+      if (showEl && !showEl.dataset.initialized) { showEl.checked = def; showEl.dataset.initialized = '1'; }
+    }
+  } catch {}
+
   setZhiStatusDim('织 · 检查中…');
   zhiState.available = await zhiHealth();
   zhiState.entries = zhiState.available ? await zhiList() : [];
@@ -4685,6 +4952,84 @@ function zhiJumpToDate(dateStr) {
 }
 
 document.getElementById('zhi-refresh')?.addEventListener('click', zhiInit);
+
+// 诊断按钮：跑 zhi_proxy /api/health + 直接 alert 完整结果（不依赖 devtools）
+document.getElementById('zhi-diagnose')?.addEventListener('click', async () => {
+  const lines = [];
+  const invoke = window.__TAURI__?.core?.invoke;
+  lines.push('1) Tauri invoke 就绪: ' + (invoke ? '是' : '否（critical · 不在 Tauri 环境？）'));
+
+  if (invoke) {
+    try {
+      const r = await invoke('zhi_proxy', { method: 'GET', path: '/api/health', body: null });
+      lines.push('2) zhi_proxy 调用成功:');
+      lines.push('   status = ' + r.status);
+      lines.push('   body = ' + (r.body || '(空)').slice(0, 200));
+    } catch (e) {
+      lines.push('2) zhi_proxy 调用失败:');
+      lines.push('   ' + String(e));
+    }
+
+    try {
+      const r2 = await invoke('zhi_proxy', { method: 'GET', path: '/api/entries?limit=3', body: null });
+      lines.push('3) /api/entries 探测:');
+      lines.push('   status = ' + r2.status);
+      lines.push('   body 长度 = ' + (r2.body || '').length);
+    } catch (e) {
+      lines.push('3) /api/entries 失败: ' + String(e));
+    }
+  }
+
+  lines.push('');
+  lines.push('zhiState.available = ' + zhiState.available);
+  lines.push('zhiState.entries 长度 = ' + (zhiState.entries?.length ?? 0));
+
+  await window.soulAlert({ message: lines.join('\n') });
+});
+
+// 启动织 dev server（一键拉起 ~/repos/zhi · bun run dev）
+// spawn 是 detach，立即返回；server 真正就绪要 2-4s，所以 polling /api/health 直到通或超时
+document.getElementById('zhi-start')?.addEventListener('click', async () => {
+  const btn = document.getElementById('zhi-start');
+  if (!btn) return;
+  const orig = btn.textContent;
+  const reset = () => { btn.disabled = false; btn.textContent = orig; };
+  btn.disabled = true;
+  btn.textContent = '启动中…';
+  try {
+    const invoke = window.__TAURI__?.core?.invoke;
+    if (!invoke) throw new Error('Tauri invoke 未就绪');
+    const msg = await invoke('start_zhi_dev');
+    console.log('[zhi-start] spawn 返回:', msg);
+    setZhiStatusDim('织 · ' + msg);
+
+    // 1.2s 起每 800ms 轮询一次 zhiHealth；最多 8s（10 次）
+    let attempts = 0;
+    const MAX = 10;
+    const poll = async () => {
+      attempts++;
+      const ok = await zhiHealth();
+      console.log('[zhi-start] poll', attempts, '/', MAX, '· healthy:', ok);
+      if (ok) {
+        await zhiInit();          // 拉数据 + 更新 UI（按钮会被 setControlsEnabled hidden）
+        reset();
+        return;
+      }
+      if (attempts >= MAX) {
+        await window.soulAlert({
+          message: '织启动后健康检查没通过（8 秒内）。\n\n常见原因：\n- 端口 3000 被占用\n- ~/repos/zhi 缺 node_modules（cd 进去先 bun install）\n- 织 server crash（终端跑 bun run dev 看 stderr）'
+        });
+        reset();
+        return;
+      }
+      setTimeout(poll, 800);
+    };
+    setTimeout(poll, 1200);
+  } catch (e) {
+    await window.soulAlert({ message: '启动织失败：' + String(e) });
+    reset();
+  }
+});
 document.getElementById('zhi-migrate')?.addEventListener('click', zhiMigrate);
 document.getElementById('zhi-show-on')?.addEventListener('change', renderJournal);
 document.getElementById('zhi-names')?.addEventListener('click', zhiSetNames);
@@ -4897,7 +5242,33 @@ zhiInit();
         `子任务 id 形如 "<project-id>-N"。日常聊天 / 反思不出 fence。`;
     }
 
-    return `<soul-core-context>panel=${activePanel} · date=${date} · 积分=${pts} · 连续=${streak}日${longHint}</soul-core-context>\n\n`;
+    // panel=tasks 时多注入：当前 task_groups 简版 + attributes id 池 + ops 协议
+    let tasksHint = '';
+    if (activePanel === 'tasks' && typeof getTaskGroups === 'function') {
+      const groups = getTaskGroups();
+      const attrIds = (typeof getAttributes === 'function' ? getAttributes() : []).map(a => a.id);
+      const summary = groups.map(g => ({
+        id: g.id, name: g.name,
+        tasks: (g.tasks || []).map(t => ({
+          id: t.id, name: t.name, points: t.points,
+          ...(t.time ? { time: t.time } : {}),
+          ...(t.weekly ? { weekly: true } : {}),
+          ...(t.minus ? { minus: true } : {}),
+          attrs: Array.isArray(t.attrs) ? t.attrs : []
+        }))
+      }));
+      tasksHint = `\ntask_groups(简)=${JSON.stringify(summary)}\n` +
+        `attrs_id_pool=${JSON.stringify(attrIds)}\n` +
+        `如果用户明确想 增/改/删 任务组或任务（含时间），回复尾加 fence:\n` +
+        `<task-groups-update>[{"op":"add_group"|"add_tasks"|"update_task"|"delete_task"|"delete_group", ...}]</task-groups-update>\n` +
+        `字段：add_group 用 group={id,name,tasks?:[{id,name,points,attrs?:[from attrs_id_pool],time?:"HH:MM"|"HH:MM-HH:MM",weekly?,minus?}]}; ` +
+        `add_tasks 用 group_id+tasks:[...]; ` +
+        `update_task 用 group_id+task_id+patch={name?,points?,attrs?,time?,weekly?,minus?}; ` +
+        `delete_task 用 group_id+task_id; delete_group 用 group_id。` +
+        `task id 形如 "<group-id>-N"。time 留空清除（patch.time=""）。日常聊天不出 fence。`;
+    }
+
+    return `<soul-core-context>panel=${activePanel} · date=${date} · 积分=${pts} · 连续=${streak}日${longHint}${tasksHint}</soul-core-context>\n\n`;
   }
 
   // 心舍 CC session UUID 持久化（让所有调用接到同一对话）
@@ -5097,6 +5468,159 @@ zhiInit();
     appendMsg('cc', `已应用 ${applied} 条长程变更${failed ? ` · ${failed} 条未执行（id 不存在或字段缺失）` : ''}。`);
   }
 
+  // ── task_groups 协议（仿 long_projects · 增/改/删今日 panel 的任务组+任务）
+  const TASKS_FENCE_RE = /<task-groups-update>\s*([\s\S]*?)\s*<\/task-groups-update>/i;
+  function extractTasksOps(reply) {
+    if (!reply) return null;
+    const m = reply.match(TASKS_FENCE_RE);
+    if (!m) return null;
+    try {
+      const ops = JSON.parse(m[1].trim());
+      return Array.isArray(ops) ? ops : null;
+    } catch (e) {
+      console.warn('[tasks-ops] fence JSON 解析失败:', e, m[1]);
+      return null;
+    }
+  }
+  function stripTasksFence(reply) {
+    return reply.replace(TASKS_FENCE_RE, '').trim();
+  }
+  function describeTasksOp(op) {
+    if (!op || !op.op) return '（未识别的变更）';
+    const groups = (typeof getTaskGroups === 'function') ? getTaskGroups() : [];
+    const findGroup = (id) => groups.find(g => g.id === id);
+    const findTask = (gid, tid) => findGroup(gid)?.tasks?.find(t => t.id === tid);
+    switch (op.op) {
+      case 'add_group':
+        return `加入新任务组「${op.group?.name || '?'}」（${(op.group?.tasks || []).length} 个任务）`;
+      case 'add_tasks':
+        return `给「${findGroup(op.group_id)?.name || op.group_id}」加 ${(op.tasks || []).length} 个任务`;
+      case 'update_task': {
+        const t = findTask(op.group_id, op.task_id);
+        const fields = Object.entries(op.patch || {}).map(([k, v]) => `${k}=${v}`).join(' / ');
+        return `更新任务「${t?.name || op.task_id}」 · ${fields || '无字段变更'}`;
+      }
+      case 'delete_task': {
+        const t = findTask(op.group_id, op.task_id);
+        return `删除任务「${t?.name || op.task_id}」（${findGroup(op.group_id)?.name || op.group_id}）`;
+      }
+      case 'delete_group':
+        return `删除任务组「${findGroup(op.group_id)?.name || op.group_id}」`;
+      default:
+        return `未知 op: ${op.op}`;
+    }
+  }
+  function ensureTaskGroupsInState() {
+    // 第一次有 ops 改动时把 const fallback 拷贝到 state.task_groups（避免污染 const）
+    if (!Array.isArray(state.task_groups) || !state.task_groups.length) {
+      state.task_groups = JSON.parse(JSON.stringify(getTaskGroups()));
+    }
+  }
+  function applyTasksOps(ops) {
+    ensureTaskGroupsInState();
+    let applied = 0, failed = 0;
+    for (const op of ops) {
+      try {
+        switch (op?.op) {
+          case 'add_group': {
+            if (!op.group || !op.group.id || !op.group.name) { failed++; break; }
+            if (state.task_groups.some(g => g.id === op.group.id)) {
+              op.group.id = op.group.id + '-' + Date.now().toString(36).slice(-4);
+            }
+            const g = {
+              id: op.group.id,
+              name: op.group.name,
+              tasks: Array.isArray(op.group.tasks)
+                ? op.group.tasks.map((t, i) => ({
+                    id: t.id || `${op.group.id}-${i + 1}`,
+                    name: t.name || '',
+                    points: typeof t.points === 'number' ? t.points : 0,
+                    attrs: Array.isArray(t.attrs) ? t.attrs : [],
+                    ...(t.time ? { time: t.time } : {}),
+                    ...(t.weekly ? { weekly: true } : {}),
+                    ...(t.minus ? { minus: true } : {}),
+                  }))
+                : []
+            };
+            state.task_groups.push(g);
+            applied++;
+            break;
+          }
+          case 'add_tasks': {
+            const g = state.task_groups.find(x => x.id === op.group_id);
+            if (!g) { failed++; break; }
+            if (!Array.isArray(g.tasks)) g.tasks = [];
+            const baseN = g.tasks.length;
+            for (const [i, t] of (op.tasks || []).entries()) {
+              g.tasks.push({
+                id: t.id || `${g.id}-${baseN + i + 1}`,
+                name: t.name || '',
+                points: typeof t.points === 'number' ? t.points : 0,
+                attrs: Array.isArray(t.attrs) ? t.attrs : [],
+                ...(t.time ? { time: t.time } : {}),
+                ...(t.weekly ? { weekly: true } : {}),
+                ...(t.minus ? { minus: true } : {}),
+              });
+            }
+            applied++;
+            break;
+          }
+          case 'update_task': {
+            const g = state.task_groups.find(x => x.id === op.group_id);
+            const t = g?.tasks?.find(x => x.id === op.task_id);
+            if (!t) { failed++; break; }
+            const patch = op.patch || {};
+            if (patch.name   !== undefined) t.name = patch.name;
+            if (patch.points !== undefined) t.points = Number(patch.points) || 0;
+            if (patch.attrs  !== undefined) t.attrs = Array.isArray(patch.attrs) ? patch.attrs : [];
+            if (patch.time   !== undefined) { if (patch.time) t.time = patch.time; else delete t.time; }
+            if (patch.weekly !== undefined) { if (patch.weekly) t.weekly = true; else delete t.weekly; }
+            if (patch.minus  !== undefined) { if (patch.minus) t.minus = true; else delete t.minus; }
+            applied++;
+            break;
+          }
+          case 'delete_task': {
+            const g = state.task_groups.find(x => x.id === op.group_id);
+            if (!g || !Array.isArray(g.tasks)) { failed++; break; }
+            const idx = g.tasks.findIndex(x => x.id === op.task_id);
+            if (idx < 0) { failed++; break; }
+            g.tasks.splice(idx, 1);
+            applied++;
+            break;
+          }
+          case 'delete_group': {
+            const idx = state.task_groups.findIndex(x => x.id === op.group_id);
+            if (idx < 0) { failed++; break; }
+            state.task_groups.splice(idx, 1);
+            applied++;
+            break;
+          }
+          default: failed++;
+        }
+      } catch (e) {
+        console.warn('[tasks-ops] apply 错:', op, e);
+        failed++;
+      }
+    }
+    saveState();
+    if (typeof renderTasks === 'function') renderTasks();
+    return { applied, failed };
+  }
+  async function handleTasksOpsProposal(ops) {
+    const lines = ops.map(o => `• ${describeTasksOp(o)}`).join('\n');
+    const ok = await window.soulConfirm({
+      message: `${getCcName()} 提议以下今日变更：\n\n${lines}\n\n应用这些变更？`,
+      primaryLabel: '应用',
+      secondaryLabel: '取消'
+    });
+    if (!ok) {
+      appendMsg('cc', '（今日变更已取消 · 数据未动）');
+      return;
+    }
+    const { applied, failed } = applyTasksOps(ops);
+    appendMsg('cc', `已应用 ${applied} 条今日变更${failed ? ` · ${failed} 条未执行（id 不存在或字段缺失）` : ''}。`);
+  }
+
   async function send() {
     const text = input.value.trim();
     if (!text) return;
@@ -5114,18 +5638,21 @@ zhiInit();
       const reply = await invoke('cc_chat', { prompt: promptWithCtx, sessionId: sid, continueSession: cont });
       if (!cont) markSessionStarted();
 
-      // 抽 long_projects fence（如果有，不显示 fence 原文给用户，只显示干净的回复）
+      // 抽 long_projects / task_groups fence（都抽出后再剥掉 fence 原文展示干净回复）
       const longOps = extractLongOps(reply);
-      const cleanReply = (longOps ? stripLongFence(reply) : reply).trim();
+      const tasksOps = extractTasksOps(reply);
+      let cleanReply = reply;
+      if (longOps) cleanReply = stripLongFence(cleanReply);
+      if (tasksOps) cleanReply = stripTasksFence(cleanReply);
+      cleanReply = cleanReply.trim();
       pending.querySelector('.text').textContent = cleanReply || '（空响应）';
       pending.classList.remove('pending');
       setCcState('happy');
       setTimeout(() => setCcState('idle'), 2200);
 
       // 若 fence 存在，弹 soul-modal 预览（异步、不阻塞 happy state）
-      if (longOps && longOps.length > 0) {
-        handleLongOpsProposal(longOps);
-      }
+      if (longOps && longOps.length > 0)  handleLongOpsProposal(longOps);
+      if (tasksOps && tasksOps.length > 0) handleTasksOpsProposal(tasksOps);
     } catch (e) {
       pending.querySelector('.text').textContent = 'CC 调用失败：' + String(e);
       pending.classList.remove('pending');
@@ -5826,50 +6353,111 @@ ${userText}
     typewriter(ccText, '我们走完了。\n\n你的 draft 已收在本地。主界面准备好——慢慢来。');
     setTimeout(() => closeModal(), 4800);
     mergeDraftIntoMainState();
+    // mark 已 onboarded，下次启动不再召唤 modal（之前漏写导致 modal 每次都跳）
+    try { localStorage.setItem(ONBOARDED_KEY, '1'); } catch {}
   }
 
-  // 自动 merge：从 draft 把 long_projects 合并到主 state.long_projects
-  // 同 id 跳过（不覆盖已有数据）；schema 标准化（draft 的 tone→vibe，milestones→sub_tasks）
-  // 其它 draft 字段（task_groups/attributes/records/...）暂不自动 merge——会影响各 panel 渲染、需要单独验证
+  // 自动 merge：从 draft 把字段合并到主 state
+  // - long_projects：同 id 跳过（不覆盖已有），schema 标准化（tone→vibe，milestones→sub_tasks）
+  // - task_groups / attributes / shop_items / journal_config：仅当 state 缺该字段时整体写入（不覆盖已有）
+  // - records / ledger（分类配置）：待 panel 改造（chunk 2）后再 merge
+  // 幂等：重复调用安全；旧用户启动时也能补 merge（state 缺哪个补哪个）
   function mergeDraftIntoMainState() {
     try {
       if (typeof state === 'undefined' || typeof saveState !== 'function') return;
+      let touched = false;
+
+      // 1) long_projects（同 id 跳过）
       const dProjects = Array.isArray(draft?.long_projects) ? draft.long_projects : [];
-      if (!dProjects.length) return;
-      if (!Array.isArray(state.long_projects)) state.long_projects = [];
-      const existingIds = new Set(state.long_projects.map(p => p.id));
-      let added = 0;
-      for (const d of dProjects) {
-        if (!d || !d.id || !d.name) continue;
-        if (existingIds.has(d.id)) continue;
-        const subTasks = Array.isArray(d.milestones)
-          ? d.milestones.map((m, i) => ({
-              id: `${d.id}-${i + 1}`,
-              label: typeof m === 'string' ? m : (m.label || m.name || ''),
-              state: 'todo'
-            })).filter(s => s.label)
-          : [];
-        state.long_projects.push({
-          id: d.id,
-          name: d.name,
-          phase: d.phase || '',
-          vibe: d.tone || d.vibe || '',
-          status: d.status === 'paused' ? 'paused' : 'active',
-          meta: d.meta || null,
-          sub_tasks: subTasks,
-          doc_path: d.doc_path || null
-        });
-        added++;
+      if (dProjects.length) {
+        if (!Array.isArray(state.long_projects)) state.long_projects = [];
+        const existingIds = new Set(state.long_projects.map(p => p.id));
+        let added = 0;
+        for (const d of dProjects) {
+          if (!d || !d.id || !d.name) continue;
+          if (existingIds.has(d.id)) continue;
+          const subTasks = Array.isArray(d.milestones)
+            ? d.milestones.map((m, i) => ({
+                id: `${d.id}-${i + 1}`,
+                label: typeof m === 'string' ? m : (m.label || m.name || ''),
+                state: 'todo'
+              })).filter(s => s.label)
+            : [];
+          state.long_projects.push({
+            id: d.id,
+            name: d.name,
+            phase: d.phase || '',
+            vibe: d.tone || d.vibe || '',
+            status: d.status === 'paused' ? 'paused' : 'active',
+            meta: d.meta || null,
+            sub_tasks: subTasks,
+            doc_path: d.doc_path || null
+          });
+          added++;
+        }
+        if (added > 0) {
+          touched = true;
+          console.log('[onboarding merge] long_projects +' + added);
+        }
       }
-      if (added > 0) {
+
+      // 2) task_groups / attributes / shop_items：仅当 state 缺时整体写入
+      const writeOnceArray = (draftKey, stateKey) => {
+        const src = draft?.[draftKey];
+        if (!Array.isArray(src) || !src.length) return;
+        if (Array.isArray(state[stateKey]) && state[stateKey].length) return;
+        state[stateKey] = JSON.parse(JSON.stringify(src));
+        touched = true;
+        console.log('[onboarding merge]', stateKey, '←', src.length, 'items');
+      };
+      writeOnceArray('task_groups', 'task_groups');
+      writeOnceArray('attributes', 'attributes');
+      writeOnceArray('shop_items', 'shop_items');
+
+      // 3) journal_config（draft.journal 是配置对象；state.journal 是日记条目数组，避免冲突改名）
+      if (draft?.journal && typeof draft.journal === 'object' && !state.journal_config) {
+        state.journal_config = JSON.parse(JSON.stringify(draft.journal));
+        touched = true;
+        console.log('[onboarding merge] journal_config ←', Object.keys(draft.journal));
+      }
+
+      if (touched) {
         saveState();
-        if (typeof renderLong === 'function') renderLong();
-        console.log('[onboarding finalize] 自动 merge', added, '个长程项目到 state.long_projects');
+        if (typeof renderAll === 'function') renderAll();
       }
     } catch (e) {
-      console.warn('[onboarding finalize] merge draft.long_projects 失败:', e);
+      console.warn('[onboarding merge] 失败:', e);
     }
   }
+
+  // 启动时无条件补 merge 一次（幂等：只在 state 缺字段时写）
+  // —— 之前放在 else 分支只对"已 set ONBOARDED_KEY"用户生效，但 finalize 漏写过该 key，
+  // 导致贞元这类已走完 8 步但 ONBOARDED_KEY 未 set 的用户永远进 if 分支召唤 modal，跳过补 merge。
+  // 现在挪到无条件：新用户 draft 为空时 merge 是 no-op，安全；旧用户启动即补。
+  try {
+    const draftHasFields = draft && (
+      (Array.isArray(draft.task_groups) && draft.task_groups.length) ||
+      (Array.isArray(draft.attributes) && draft.attributes.length) ||
+      (Array.isArray(draft.shop_items) && draft.shop_items.length) ||
+      (Array.isArray(draft.long_projects) && draft.long_projects.length) ||
+      (draft.journal && typeof draft.journal === 'object')
+    );
+    if (draftHasFields) {
+      console.log('[onboarding] 启动时补 merge（幂等）');
+      mergeDraftIntoMainState();
+    }
+  } catch (e) {
+    console.warn('[onboarding] 补 merge 失败:', e);
+  }
+
+  // Retro-fit: 之前 finalize 漏写 ONBOARDED_KEY，导致走完 8 步的用户每次启动都被召唤 modal。
+  // 启动时若检测到 draft 已完整 + ONBOARDED_KEY 缺，自动补设（一次性 fix）。
+  try {
+    if (!localStorage.getItem(ONBOARDED_KEY) && isOnboardComplete()) {
+      localStorage.setItem(ONBOARDED_KEY, '1');
+      console.log('[onboarding] retro-fit: ONBOARDED_KEY 补设（之前 finalize 漏写）');
+    }
+  } catch {}
 
   // 首次启动自动召唤（onboarded 标记缺时；800ms 延迟让 window 渲染稳定）
   if (!localStorage.getItem(ONBOARDED_KEY)) {

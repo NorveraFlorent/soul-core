@@ -166,6 +166,81 @@ fn memento_counts() -> Result<serde_json::Value, String> {
     Ok(serde_json::json!({ "outward": outward, "inward": inward, "available": true }))
 }
 
+/// 织 server 通用代理（绕过 webview 跨域 CORS）
+/// - webview origin 是 tauri://localhost，向 http://127.0.0.1:3000 发 fetch 会被浏览器 CORS 拦
+/// - zhi server 未设 Access-Control-Allow-Origin，所以前端 fetch 拿不到响应
+/// - 用 Rust reqwest 走原生网络栈，没有 CORS 限制
+/// 参数：method (GET/POST/PATCH/DELETE)、path（如 "/api/health"）、body（可选 JSON 字符串）
+/// 返回：{status: u16, body: string} —— body 是原始响应字符串，前端自己 JSON.parse
+#[tauri::command]
+async fn zhi_proxy(
+    method: String,
+    path: String,
+    body: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let base = "http://127.0.0.1:3000";
+    let url = format!("{}{}", base, path);
+    // 显式 no_proxy：贞元机器有系统代理（VPN / clash 等），reqwest 默认 honor HTTP_PROXY
+    // 系统代理会拦截到 127.0.0.1:3000 的请求返回 502。本地织 server 无需走代理。
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(8))
+        .no_proxy()
+        .build()
+        .map_err(|e| format!("build client: {}", e))?;
+
+    let m = method.to_uppercase();
+    let mut req = match m.as_str() {
+        "GET" => client.get(&url),
+        "POST" => client.post(&url),
+        "PATCH" => client.patch(&url),
+        "DELETE" => client.delete(&url),
+        "PUT" => client.put(&url),
+        _ => return Err(format!("unsupported method: {}", method)),
+    };
+    if let Some(b) = body {
+        req = req.header("content-type", "application/json").body(b);
+    }
+    let resp = req.send().await.map_err(|e| format!("request error: {}", e))?;
+    let status = resp.status().as_u16();
+    let text = resp.text().await.unwrap_or_default();
+    Ok(serde_json::json!({ "status": status, "body": text }))
+}
+
+/// 启动织 dev server (`~/repos/zhi` · `bun run dev`)
+/// - cwd: ~/repos/zhi（GUI 启动时 PATH 缺 /opt/homebrew/bin，显式注入）
+/// - detach: 不 wait，心舍关掉了 zhi server 还在跑（用户自己 kill）
+/// - 仓库不存在 / bun 不在 PATH 时返回错误供前端展示
+#[tauri::command]
+fn start_zhi_dev() -> Result<String, String> {
+    let home = std::env::var("HOME").map_err(|e| format!("no HOME: {}", e))?;
+    let zhi_dir = std::path::PathBuf::from(&home).join("repos").join("zhi");
+    if !zhi_dir.exists() {
+        return Err(format!("~/repos/zhi 不存在（{}）—— 请先 git clone 织仓库", zhi_dir.display()));
+    }
+
+    // 注入 brew PATH（GUI 启动环境缺）
+    let extra = "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin";
+    let path = std::env::var("PATH").unwrap_or_default();
+    let new_path = if path.is_empty() { extra.to_string() } else { format!("{}:{}", extra, path) };
+
+    // detach spawn：stdout/stderr 丢到 /dev/null，避免 zombie
+    let dev_null_out = std::fs::File::open("/dev/null").map_err(|e| format!("open /dev/null: {}", e))?;
+    let dev_null_err = std::fs::File::open("/dev/null").map_err(|e| format!("open /dev/null: {}", e))?;
+
+    let child = std::process::Command::new("bun")
+        .args(["run", "dev"])
+        .current_dir(&zhi_dir)
+        .env("PATH", new_path)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::from(dev_null_out))
+        .stderr(std::process::Stdio::from(dev_null_err))
+        .spawn()
+        .map_err(|e| format!("spawn bun 失败（bun 可能不在 PATH）: {}", e))?;
+
+    // 不等 wait()，让进程独立跑
+    Ok(format!("已启动织 dev server (pid={})，约 2-3 秒后健康检查应该通过", child.id()))
+}
+
 /// macOS · 把 dashboard window 设成"桌面图标层"，跟原生桌面 widget 同层级
 /// NSDesktopIconWindowLevel ≈ -2147483603（桌面图标所在层，wallpaper 之上、所有 app 之下）
 /// 注意：那层 macOS 默认不接收 mouse events——若要让 widget 可交互必须自定义 canBecomeKey
@@ -271,7 +346,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![cc_chat, cc_session_dir, toggle_dashboard, set_dashboard_pin, set_dashboard_size, memento_counts])
+        .invoke_handler(tauri::generate_handler![cc_chat, cc_session_dir, toggle_dashboard, set_dashboard_pin, set_dashboard_size, memento_counts, start_zhi_dev, zhi_proxy])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {

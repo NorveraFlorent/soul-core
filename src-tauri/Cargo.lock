@@ -3525,6 +3525,7 @@ name = "soul-core"
 version = "0.1.0"
 dependencies = [
  "cocoa",
+ "reqwest 0.12.28",
  "serde",
  "serde_json",
  "tauri",
