@@ -2221,32 +2221,8 @@ body:has(.onboard-modal.visible) .window {
     </div>
 
     <div class="panel" id="panel-record">
-      <div class="record-section">
-        <div class="record-title">今日睡眠 · Sleep</div>
-        <div class="record-item">
-          <div class="record-item-name">昨夜质量</div>
-          <div class="toggle-group">
-            <button class="toggle-btn" data-record="sleep" data-val="poor">浅</button>
-            <button class="toggle-btn" data-record="sleep" data-val="ok">还行</button>
-            <button class="toggle-btn" data-record="sleep" data-val="good">沉</button>
-          </div>
-        </div>
-        <div style="font-size: 11px; color: var(--ink-faint); padding: 10px 4px; line-height: 1.7; letter-spacing: 0.06em; font-family: var(--serif); font-weight: 300;">
-          不评判。记录是看见自己的方式。
-        </div>
-      </div>
-
-      <div class="record-section">
-        <div class="record-title">今日心情 · Mood</div>
-        <div class="record-item">
-          <div class="record-item-name">此刻一档</div>
-          <div class="toggle-group">
-            <button class="toggle-btn crimson" data-record="mood" data-val="low">沉</button>
-            <button class="toggle-btn" data-record="mood" data-val="flat">平</button>
-            <button class="toggle-btn" data-record="mood" data-val="light">轻</button>
-          </div>
-        </div>
-      </div>
+      <!-- records 由 renderRecord() 按 state.records_config 动态渲染（fallback 是默认 sleep/mood） -->
+      <div id="records-container"></div>
 
       <div class="record-section">
         <div class="record-title">近三十日</div>
@@ -2286,6 +2262,7 @@ body:has(.onboard-modal.visible) .window {
         </div>
       </div>
       <div class="ledger-input-row">
+        <select class="ledger-input ledger-category" id="ledger-category" hidden style="background-color: rgba(250, 241, 241, 0.165)"></select>
         <input class="ledger-input" id="ledger-name" placeholder="项目（如 Mac 月供）" style="background-color: rgba(250, 241, 241, 0.165)">
         <input class="ledger-input ledger-amount" id="ledger-amount" type="number" placeholder="金额">
       </div>
@@ -3828,6 +3805,23 @@ const ATTRIBUTES = [
   { id: 'rest', name: '休息', en: 'Rest' }
 ];
 
+// records 默认配置（onboarding 后会被 state.records_config 替换走 getter）
+const RECORDS_DEFAULT = [
+  { id: 'sleep', name: '今日睡眠 · Sleep', options: [
+    { val: 'poor', label: '浅' }, { val: 'ok', label: '还行' }, { val: 'good', label: '沉' }
+  ]},
+  { id: 'mood', name: '今日心情 · Mood', options: [
+    { val: 'low', label: '沉' }, { val: 'flat', label: '平' }, { val: 'light', label: '轻' }
+  ]}
+];
+
+// ledger 默认配置
+const LEDGER_DEFAULT = {
+  categories: [],
+  show_categories: false,
+  currency_symbol: '¥'
+};
+
 const SHOP_ITEMS = [
   { id: 'rest_day', name: '一天什么都不干的休息日', desc: '光是给自己这个名头，就已经是奖励', cost: 200 },
   { id: 'coffee_treat', name: '一杯特别的咖啡 / 茶', desc: '不是 routine 那杯，是为自己挑的那杯', cost: 30 },
@@ -3966,6 +3960,8 @@ function checkDateChange() {
 const getTaskGroups = () => (Array.isArray(state.task_groups) && state.task_groups.length) ? state.task_groups : TASK_GROUPS;
 const getAttributes = () => (Array.isArray(state.attributes) && state.attributes.length) ? state.attributes : ATTRIBUTES;
 const getShopItems  = () => (Array.isArray(state.shop_items) && state.shop_items.length) ? state.shop_items : SHOP_ITEMS;
+const getRecordsConfig = () => (Array.isArray(state.records_config) && state.records_config.length) ? state.records_config : RECORDS_DEFAULT;
+const getLedgerConfig  = () => (state.ledger_config && typeof state.ledger_config === 'object') ? { ...LEDGER_DEFAULT, ...state.ledger_config } : LEDGER_DEFAULT;
 
 // ============= CC 昵称 · getter + 全 UI 模板填充 =============
 // state.cc_nickname 单点设置，下面 applyCcNickname() 遍历两类 element 注入：
@@ -4118,30 +4114,51 @@ function renderAttrs() {
 
 function renderRecord() {
   const today = todayStr();
+  const records = getRecordsConfig();
+  const container = document.getElementById('records-container');
+  if (container) {
+    container.innerHTML = records.map(rec => {
+      const cur = state.records?.[rec.id]?.[today];
+      const opts = (rec.options || []).map(o =>
+        `<button class="toggle-btn ${cur === o.val ? 'active' : ''}" data-record="${escapeHtml(rec.id)}" data-val="${escapeHtml(o.val)}">${escapeHtml(o.label)}</button>`
+      ).join('');
+      return `
+        <div class="record-section">
+          <div class="record-title">${escapeHtml(rec.name)}</div>
+          <div class="record-item">
+            <div class="record-item-name">今日一档</div>
+            <div class="toggle-group">${opts}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    // dynamic 渲染后 wire click（取代 init 时一次性 wire）
+    container.querySelectorAll('[data-record]').forEach(b => {
+      b.addEventListener('click', () => setRecord(b.dataset.record, b.dataset.val));
+    });
+  }
 
-  document.querySelectorAll('[data-record="sleep"]').forEach(b => {
-    b.classList.toggle('active', state.records.sleep?.[today] === b.dataset.val);
-  });
-  document.querySelectorAll('[data-record="mood"]').forEach(b => {
-    b.classList.toggle('active', state.records.mood?.[today] === b.dataset.val);
-  });
-
+  // 历史区：dynamic 按 records 顺序展开各 record 的当日 label
+  const labelOf = (recId, val) => {
+    const r = records.find(x => x.id === recId);
+    return r?.options?.find(o => o.val === val)?.label;
+  };
   const history = document.getElementById('record-history');
+  if (!history) return;
   const entries = [];
   for (let i = 0; i < 30; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const sleep = state.records.sleep?.[ds];
-    const mood = state.records.mood?.[ds];
-    if (sleep || mood) {
-      const tags = [];
-      if (sleep === 'poor') tags.push('<span style="color:var(--ink-soft)">浅</span>');
-      if (sleep === 'ok') tags.push('<span style="color:var(--celadon)">还行</span>');
-      if (sleep === 'good') tags.push('<span style="color:var(--accent)">沉</span>');
-      if (mood === 'low') tags.push('<span style="color:var(--crimson)">沉</span>');
-      if (mood === 'flat') tags.push('<span style="color:var(--ink-soft)">平</span>');
-      if (mood === 'light') tags.push('<span style="color:var(--accent)">轻</span>');
+    const tags = [];
+    for (const rec of records) {
+      const v = state.records?.[rec.id]?.[ds];
+      if (v) {
+        const lbl = labelOf(rec.id, v) || v;
+        tags.push(`<span style="color:var(--ink-soft)">${escapeHtml(lbl)}</span>`);
+      }
+    }
+    if (tags.length) {
       entries.push(`
         <div style="display:flex; justify-content:space-between; padding:8px 4px; border-bottom:1px solid var(--line-soft); font-size:13px;">
           <span style="font-family:'Cormorant Garamond',serif; color:var(--ink-faint); letter-spacing:1px;">${ds}</span>
@@ -4306,13 +4323,30 @@ function renderJournal() {
 }
 
 function renderLedger() {
+  const cfg = getLedgerConfig();
+  const sym = cfg.currency_symbol || '¥';
   const now = new Date();
   const monthPrefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const monthEntries = state.ledger.filter(e => e.date.startsWith(monthPrefix));
   const total = monthEntries.reduce((s, e) => s + Number(e.amount), 0);
 
-  document.getElementById('ledger-month').textContent = '¥' + total.toFixed(0);
+  document.getElementById('ledger-month').textContent = sym + total.toFixed(0);
   document.getElementById('ledger-count').textContent = monthEntries.length;
+
+  // category select 接 cfg.categories（show_categories=true 才显示）
+  const sel = document.getElementById('ledger-category');
+  if (sel) {
+    if (cfg.show_categories && Array.isArray(cfg.categories) && cfg.categories.length) {
+      sel.hidden = false;
+      if (sel.dataset.cats !== cfg.categories.join('|')) {
+        sel.innerHTML = '<option value="">分类</option>' +
+          cfg.categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+        sel.dataset.cats = cfg.categories.join('|');
+      }
+    } else {
+      sel.hidden = true;
+    }
+  }
 
   const container = document.getElementById('ledger-entries');
   if (!state.ledger.length) {
@@ -4321,13 +4355,14 @@ function renderLedger() {
   }
   container.innerHTML = state.ledger.slice().reverse().map((e, idx) => {
     const realIdx = state.ledger.length - 1 - idx;
+    const catTag = e.category ? `<span style="color:var(--ink-faint);font-size:11px;margin-right:6px;">${escapeHtml(e.category)}</span>` : '';
     return `
       <div class="ledger-entry">
         <div class="ledger-entry-info">
-          <div class="ledger-entry-name">${escapeHtml(e.name)}</div>
+          <div class="ledger-entry-name">${catTag}${escapeHtml(e.name)}</div>
           <div class="ledger-entry-date">${e.date}</div>
         </div>
-        <div class="ledger-entry-amount">¥${Number(e.amount).toFixed(0)}</div>
+        <div class="ledger-entry-amount">${escapeHtml(sym)}${Number(e.amount).toFixed(0)}</div>
         <button class="ledger-delete" onclick="deleteLedger(${realIdx})">×</button>
       </div>
     `;
@@ -4470,9 +4505,14 @@ function addLedger() {
   const name = document.getElementById('ledger-name').value.trim();
   const amount = document.getElementById('ledger-amount').value;
   if (!name || !amount) return;
-  state.ledger.push({ name, amount: Number(amount), date: todayStr() });
+  const sel = document.getElementById('ledger-category');
+  const category = (sel && !sel.hidden && sel.value) ? sel.value : '';
+  const entry = { name, amount: Number(amount), date: todayStr() };
+  if (category) entry.category = category;
+  state.ledger.push(entry);
   document.getElementById('ledger-name').value = '';
   document.getElementById('ledger-amount').value = '';
+  if (sel) sel.value = '';
   saveState();
   renderLedger();
 }
@@ -4676,9 +4716,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
   });
 });
 
-document.querySelectorAll('[data-record]').forEach(b => {
-  b.addEventListener('click', () => setRecord(b.dataset.record, b.dataset.val));
-});
+// data-record click handler 在 renderRecord 内 wire（records-container dynamic 渲染后）
 
 document.getElementById('journal-save').addEventListener('click', saveJournal);
 document.getElementById('ledger-add').addEventListener('click', addLedger);
@@ -6413,12 +6451,20 @@ ${userText}
       writeOnceArray('task_groups', 'task_groups');
       writeOnceArray('attributes', 'attributes');
       writeOnceArray('shop_items', 'shop_items');
+      writeOnceArray('records', 'records_config');
 
       // 3) journal_config（draft.journal 是配置对象；state.journal 是日记条目数组，避免冲突改名）
       if (draft?.journal && typeof draft.journal === 'object' && !state.journal_config) {
         state.journal_config = JSON.parse(JSON.stringify(draft.journal));
         touched = true;
         console.log('[onboarding merge] journal_config ←', Object.keys(draft.journal));
+      }
+
+      // 4) ledger_config（同理 draft.ledger 是配置对象；state.ledger 是记账条目数组）
+      if (draft?.ledger && typeof draft.ledger === 'object' && !state.ledger_config) {
+        state.ledger_config = JSON.parse(JSON.stringify(draft.ledger));
+        touched = true;
+        console.log('[onboarding merge] ledger_config ←', Object.keys(draft.ledger));
       }
 
       if (touched) {
@@ -6440,7 +6486,9 @@ ${userText}
       (Array.isArray(draft.attributes) && draft.attributes.length) ||
       (Array.isArray(draft.shop_items) && draft.shop_items.length) ||
       (Array.isArray(draft.long_projects) && draft.long_projects.length) ||
-      (draft.journal && typeof draft.journal === 'object')
+      (Array.isArray(draft.records) && draft.records.length) ||
+      (draft.journal && typeof draft.journal === 'object') ||
+      (draft.ledger && typeof draft.ledger === 'object')
     );
     if (draftHasFields) {
       console.log('[onboarding] 启动时补 merge（幂等）');
