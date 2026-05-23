@@ -27,12 +27,30 @@ fn is_uuid(s: &str) -> bool {
     })
 }
 
+// 诊断 log · 写 /tmp/soul-core-cc-diag.log，每次 cc_chat 留痕
+fn log_diag(msg: &str) {
+    use std::io::Write;
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/soul-core-cc-diag.log")
+    {
+        let _ = writeln!(f, "[t={}] {}", ts, msg);
+    }
+}
+
 // 在 cwd 下用 bash -lc 跑一次 claude，返回 (stdout, stderr, exit_code)
 async fn run_claude(
     cmd_str: &str,
     prompt: &str,
     cwd: &std::path::Path,
 ) -> Result<(String, String, i32), String> {
+    log_diag(&format!("--- run_claude START cwd={:?} cmd={:?} prompt_len={}", cwd, cmd_str, prompt.len()));
+
     let mut child = Command::new("/bin/bash")
         .current_dir(cwd)
         .arg("-lc")
@@ -41,25 +59,43 @@ async fn run_claude(
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
-        .map_err(|e| format!("spawn claude failed: {}", e))?;
+        .map_err(|e| {
+            log_diag(&format!("spawn claude failed: {}", e));
+            format!("spawn claude failed: {}", e)
+        })?;
 
     if let Some(mut stdin) = child.stdin.take() {
         stdin
             .write_all(prompt.as_bytes())
             .await
-            .map_err(|e| format!("write stdin failed: {}", e))?;
+            .map_err(|e| {
+                log_diag(&format!("write stdin failed: {}", e));
+                format!("write stdin failed: {}", e)
+            })?;
     }
 
     let output = child
         .wait_with_output()
         .await
-        .map_err(|e| format!("wait failed: {}", e))?;
+        .map_err(|e| {
+            log_diag(&format!("wait failed: {}", e));
+            format!("wait failed: {}", e)
+        })?;
 
-    Ok((
-        String::from_utf8_lossy(&output.stdout).to_string(),
-        String::from_utf8_lossy(&output.stderr).to_string(),
-        output.status.code().unwrap_or(-1),
-    ))
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let code = output.status.code().unwrap_or(-1);
+
+    log_diag(&format!(
+        "--- run_claude END code={} stderr_len={} stdout_len={} stderr={:?} stdout_head={:?}",
+        code,
+        stderr.len(),
+        stdout.len(),
+        if stderr.len() > 400 { &stderr[..400] } else { stderr.as_str() },
+        if stdout.len() > 400 { &stdout[..400] } else { stdout.as_str() }
+    ));
+
+    Ok((stdout, stderr, code))
 }
 
 // 向用户本地 Claude Code CLI 发 prompt 拿响应（print mode）。
@@ -88,36 +124,53 @@ async fn cc_chat(
         return Ok(stdout);
     }
 
-    // Fallback: 如果有 sid，错误可能是 "already in use"(创建已存在) 或 "not found"(resume 不存在)
-    // 自动换另一种姿态再试一次
+    // Fallback: 三种触发条件
+    //   1. stderr 含 "already in use" → 当前 --session-id 失败，转 --resume
+    //   2. stderr 含 "not found" → 当前 --resume 失败，转 --session-id
+    //   3. silent failure（stderr 空）→ 反向尝试当前模式的对端（claude/daemon race 兜底）
     if let Some(s) = sid {
         let lower = stderr.to_lowercase();
+        let stderr_empty = stderr.trim().is_empty();
         let try_alt = if !cont && (lower.contains("already") || lower.contains("in use") || lower.contains("exists")) {
             Some(format!("claude -p --resume {}", s))
         } else if cont && (lower.contains("not found") || lower.contains("does not exist") || lower.contains("no such")) {
             Some(format!("claude -p --session-id {}", s))
+        } else if stderr_empty {
+            // silent failure：claude CLI / bg daemon 时序问题。反向尝试一次
+            if cont {
+                Some(format!("claude -p --session-id {}", s))
+            } else {
+                Some(format!("claude -p --resume {}", s))
+            }
         } else {
             None
         };
         if let Some(alt_cmd) = try_alt {
             // 让上一个失败的 claude 子进程退出状态完全稳定，避免和 fallback 起 race
-            // （观察过：紧贴重试时 alt 偶发 exit 1 空 stderr——状态分裂自愈场景里典型表现）
             tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+            log_diag(&format!("primary failed, try alt: {}", alt_cmd));
             let (stdout2, stderr2, code2) = run_claude(&alt_cmd, &prompt, &cwd).await?;
             if code2 == 0 {
                 return Ok(stdout2);
             }
             return Err(format!(
-                "claude failed (primary exit {}: {}) (alt exit {}: {})",
+                "claude failed (primary exit {}: stderr={:?} stdout={:?}) (alt exit {}: stderr={:?} stdout={:?})",
                 code,
                 stderr.trim(),
+                stdout.trim(),
                 code2,
-                stderr2.trim()
+                stderr2.trim(),
+                stdout2.trim(),
             ));
         }
     }
 
-    Err(format!("claude exited with {}: {}", code, stderr.trim()))
+    Err(format!(
+        "claude exited with {}: stderr={:?} stdout={:?}",
+        code,
+        stderr.trim(),
+        stdout.trim(),
+    ))
 }
 
 // 返回心舍 / Soul·Core CC 的 session 存储目录路径（让 UI 能告诉用户文件在哪）
