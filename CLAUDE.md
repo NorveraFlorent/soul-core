@@ -52,12 +52,17 @@ macOS 桌面 app（Tauri v2）—— 日常修证 + 长程项目 + 短程打勾�
 
 - 第二 Tauri window (label `dashboard`)，338×400，透明 + 无装饰 + alwaysOnBottom + skipTaskbar
 - 视觉调子: 暖金 hairline + Cormorant Garamond / Noto Serif SC + radius 36 (narrow 22) + backdrop-filter blur(40) saturate(1.4)
-- 三区: TODAY (todo 三态 ○ ◐ ●) / LONG (vibe 一句话) / ASPECTS (日夜自动切换暖金/月白)
-- 模式: full 338×400 / narrow 338×168 (.mode-narrow hide brand+divider+content+aspects-fixed+actions，只显 reminder list)
-- 透明度: frosted (默认 backdrop) / transparent (全透) / hover (悬停切 frosted)。**入口**: 双击 widget 空白 (220ms 延迟避免 drag/dblclick 冲突) 或右键菜单
-- 召唤: 主端**右上角** ▤ 按钮或 ⌘D
+- 三区: TODAY (实数据 · 未做完任务 · 点击 toggle done) / LONG (active 长程 vibe) / ASPECTS (日夜自动切换)
+- 模式: full 338×400 / narrow 338×168 (.mode-narrow hide brand+divider+content+aspects-fixed+actions，narrow 显 reminders 列表)
+- 透明度: frosted (默认 backdrop) / transparent (全透) / hover (悬停切 frosted)。**入口**: 双击 widget 空白 (220ms 延迟) 或右键菜单
+- 召唤: 主端**右上角** ▤ 按钮或 ⌘D。toggle_dashboard 每次 show 都 reposition 到 `(600, 200)` 逻辑像素——dashboard window-state 没被 plugin 持久化，且 transparency / alwaysOnBottom 容易让 widget"在但看不见"，显式 reposition 是兜底
+- **插槽契约**（主端 saveState 时 `refreshDashboardSlots()` 重写 3 槽）：
+  - `soulcore_slot_today` `[{id,label,group}]` ← task_groups 拍平 + 未做完（done 自动消失）
+  - `soulcore_slot_long` `[{id,name,vibe}]` ← long_projects 过滤 active（paused 隐藏）
+  - `soulcore_slot_reminders` `[{id,label,time}]` ← task_groups 里带 time 字段 + 未做完（narrow 模式用，filterUpcoming(2h) 自己 filter）
+  - `soulcore_slot_intent` `{action,id,ts}` ← dashboard 点击 todo 时写，主端 storage listener 处理调 toggleTask 回流
 - Rust 命令: `toggle_dashboard` / `set_dashboard_pin(pinned)` / `set_dashboard_size(width, height, minWidth, minHeight)`
-- localStorage keys: `soulcore_dashboard_pinned` / `soulcore_dashboard_mode` / `soulcore_dashboard_transparency` / `soulcore_reminders` / `soulcore_dashboard_todo_demo`
+- localStorage keys: `soulcore_dashboard_pinned` / `soulcore_dashboard_mode` / `soulcore_dashboard_transparency` / 4 个 slot keys（上述）。旧 `soulcore_reminders` / `soulcore_dashboard_todo_demo` 已废弃
 
 ## panel-cc · CC 小基地
 
