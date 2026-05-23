@@ -4122,11 +4122,11 @@ function renderRecord() {
       const opts = (rec.options || []).map(o =>
         `<button class="toggle-btn ${cur === o.val ? 'active' : ''}" data-record="${escapeHtml(rec.id)}" data-val="${escapeHtml(o.val)}">${escapeHtml(o.label)}</button>`
       ).join('');
+      // record name 直接占"今日一档"那个位置，不再有外层 section-title 重复
       return `
         <div class="record-section">
-          <div class="record-title">${escapeHtml(rec.name)}</div>
           <div class="record-item">
-            <div class="record-item-name">今日一档</div>
+            <div class="record-item-name">${escapeHtml(rec.name)}</div>
             <div class="toggle-group">${opts}</div>
           </div>
         </div>
