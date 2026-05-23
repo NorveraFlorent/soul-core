@@ -394,20 +394,12 @@ async fn toggle_dashboard(app: tauri::AppHandle) -> Result<bool, String> {
         win.hide().map_err(|e| e.to_string())?;
         Ok(false)
     } else {
-        // 强制重新摆位 + 临时 always_on_top，破解"在屏幕外 / 在主端后面"问题
-        // 600,200 是一个稳定可见的初始位置
+        // 每次召唤都 reposition 到 (600, 200)：dashboard window-state 没被 plugin 持久化（filter 只含 main），
+        // 每次都从默认位置启起。但 macOS / 之前的 transparent 设置等会让 widget"在但看不见"——
+        // 显式 reposition 是稳定兜底。alwaysOnBottom 不动（默认 widget 行为）。
         let _ = win.set_position(tauri::LogicalPosition::new(600.0_f64, 200.0_f64));
-        let _ = win.set_always_on_bottom(false);
-        let _ = win.set_always_on_top(true);
         win.show().map_err(|e| e.to_string())?;
         win.set_focus().map_err(|e| e.to_string())?;
-        // 2 秒后恢复 alwaysOnBottom（默认行为）
-        let win_clone = win.clone();
-        tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-            let _ = win_clone.set_always_on_top(false);
-            let _ = win_clone.set_always_on_bottom(true);
-        });
         Ok(true)
     }
 }

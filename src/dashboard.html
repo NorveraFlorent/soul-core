@@ -945,9 +945,10 @@
       // ─── dashboard 插槽渲染（接 soulcore_slot_today / soulcore_slot_long）─────
       // 主端写两槽 + 监听 intent 回流；dashboard 读两槽 + 写 intent
       // 契约形状见主端 refreshDashboardSlots 注释
-      const SLOT_TODAY_KEY  = 'soulcore_slot_today';
-      const SLOT_LONG_KEY   = 'soulcore_slot_long';
-      const SLOT_INTENT_KEY = 'soulcore_slot_intent';
+      const SLOT_TODAY_KEY     = 'soulcore_slot_today';
+      const SLOT_LONG_KEY      = 'soulcore_slot_long';
+      const SLOT_REMINDERS_KEY = 'soulcore_slot_reminders';
+      const SLOT_INTENT_KEY    = 'soulcore_slot_intent';
 
       function escHtml(s) {
         return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1007,10 +1008,14 @@
       renderToday();
       renderLong();
 
-      // 监听插槽更新：主端任何 saveState 后两槽会重写，触发跨 window storage event
+      // 监听插槽更新：主端任何 saveState 后三槽会重写，触发跨 window storage event
       window.addEventListener('storage', (e) => {
         if (e.key === SLOT_TODAY_KEY) renderToday();
         else if (e.key === SLOT_LONG_KEY) renderLong();
+        else if (e.key === SLOT_REMINDERS_KEY) {
+          // 仅 narrow 模式才显这块，但每次更新都跑（页面没渲也就是 noop）
+          if (typeof renderNarrowList === 'function') renderNarrowList();
+        }
       });
 
       // ─── 日/夜自动切换（按时间 + 每 15 分钟更新） ───
@@ -1032,10 +1037,10 @@
         todayMeta.textContent = `${mm} · ${dd}`;
       }
 
-      // ─── reminders 数据（B1：localStorage demo） ───────────────────
-      // schema: { items: [ { id, time: "HH:MM", title, category } ] }
-      // category: "today" | "long-arc" | "custom"
-      const REMINDERS_KEY = 'soulcore_reminders';
+      // ─── reminders · 接 soulcore_slot_reminders 插槽 ───────────────────
+      // 插槽形状: [{ id, label, time: "HH:MM" }]
+      // 写者=主端 refreshDashboardSlots（task_groups 里 time 字段 + 未做完）
+      // narrow 模式自己 filter 2h 窗口；旧 soulcore_reminders demo key 弃用
 
       function pad2(n) { return String(n).padStart(2, '0'); }
       function nowHHMM() {
@@ -1052,39 +1057,15 @@
         return h * 60 + min;
       }
 
-      function seedDemoReminders() {
-        // 围绕"现在"产生几条 placeholder：+10m / +45m / +90m / +110m
-        const now = new Date();
-        const base = now.getHours() * 60 + now.getMinutes();
-        const offsets = [10, 45, 90, 110];
-        const titles = [
-          { title: '内观 · 中丹田留意', category: 'today' },
-          { title: '回信 · 师兄', category: 'today' },
-          { title: '心舍 · 整端推进', category: 'long-arc' },
-          { title: '茶 · 凉一杯', category: 'custom' },
-        ];
-        const items = offsets.map((off, i) => {
-          const m = (base + off) % (24 * 60);
-          const time = pad2(Math.floor(m / 60)) + ':' + pad2(m % 60);
-          return { id: 'r' + (i + 1), time, title: titles[i].title, category: titles[i].category };
-        });
-        return { items };
-      }
-
       function loadReminders() {
         try {
-          const raw = localStorage.getItem(REMINDERS_KEY);
-          if (!raw) {
-            const seed = seedDemoReminders();
-            localStorage.setItem(REMINDERS_KEY, JSON.stringify(seed));
-            return seed;
-          }
+          const raw = localStorage.getItem(SLOT_REMINDERS_KEY);
+          if (!raw) return [];
           const parsed = JSON.parse(raw);
-          if (!parsed || !Array.isArray(parsed.items)) return { items: [] };
-          return parsed;
+          return Array.isArray(parsed) ? parsed : [];
         } catch (e) {
           console.warn('loadReminders failed:', e);
-          return { items: [] };
+          return [];
         }
       }
 
@@ -1121,8 +1102,8 @@
         const listEl = document.getElementById('narrow-list');
         const metaEl = document.getElementById('narrow-meta');
         if (!listEl) return;
-        const data = loadReminders();
-        const upcoming = filterUpcoming(data.items, 120).slice(0, 4);
+        const items = loadReminders();
+        const upcoming = filterUpcoming(items, 120).slice(0, 4);
         listEl.innerHTML = '';
         if (metaEl) metaEl.textContent = nowHHMM();
         if (upcoming.length === 0) {
@@ -1142,7 +1123,7 @@
           t.textContent = it.time;
           const title = document.createElement('span');
           title.className = 'narrow-title';
-          title.textContent = it.title;
+          title.textContent = it.label;       // slot 用 label，跟 today 槽一致
           const delta = document.createElement('span');
           delta.className = 'narrow-delta';
           delta.textContent = fmtDelta(it._delta);

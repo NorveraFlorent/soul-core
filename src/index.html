@@ -3911,18 +3911,21 @@ function saveState() {
 
 // ═══ dashboard 插槽 · 主端单向写、dashboard 单向读 ═══════════════════
 // 契约：
-//   soulcore_slot_today  [{id, label, group?}]   未做完的任务  · 写者=主端 / 读者=dashboard
-//   soulcore_slot_long   [{id, name, vibe}]      active 的长程 · 写者=主端 / 读者=dashboard
-//   soulcore_slot_intent {action, id, ts}        dashboard 反向信号 · 写者=dashboard / 读者=主端
-// 任何 saveState 都重写 today/long 两槽。主端 storage 监听 intent 把 toggle 回流。
-const SLOT_TODAY_KEY  = 'soulcore_slot_today';
-const SLOT_LONG_KEY   = 'soulcore_slot_long';
-const SLOT_INTENT_KEY = 'soulcore_slot_intent';
+//   soulcore_slot_today      [{id, label, group?}]   未做完的任务（full 模式 TODAY 区）
+//   soulcore_slot_long       [{id, name, vibe}]      active 的长程（full 模式 LONG 区）
+//   soulcore_slot_reminders  [{id, label, time}]     带 time 字段的未完成今日任务（narrow 模式）
+//   soulcore_slot_intent     {action, id, ts}        dashboard 反向信号
+// 任何 saveState 都重写 today/long/reminders 三槽。主端 storage 监听 intent 把 toggle 回流。
+const SLOT_TODAY_KEY     = 'soulcore_slot_today';
+const SLOT_LONG_KEY      = 'soulcore_slot_long';
+const SLOT_REMINDERS_KEY = 'soulcore_slot_reminders';
+const SLOT_INTENT_KEY    = 'soulcore_slot_intent';
 
 function refreshDashboardSlots() {
   try {
     // TODAY · 拍平 task_groups + 过滤未做完
     const today = [];
+    const reminders = [];  // narrow 模式用：带 time 字段的未做完
     const week = weekStr();
     for (const g of getTaskGroups()) {
       for (const t of (g.tasks || [])) {
@@ -3932,9 +3935,18 @@ function refreshDashboardSlots() {
           : !!state.todayTasks[t.id];
         if (done) continue;
         today.push({ id: t.id, label: t.name, group: g.name });
+        // 带 time 字段的同时进 reminders 槽（narrow 模式自己 filter 2h 窗口）
+        // time 形如 "HH:MM" 或 "HH:MM-HH:MM"；取起始时刻
+        if (typeof t.time === 'string' && t.time.length >= 4) {
+          const start = t.time.split('-')[0].trim();
+          if (/^\d{1,2}:\d{2}$/.test(start)) {
+            reminders.push({ id: t.id, label: t.name, time: start });
+          }
+        }
       }
     }
     localStorage.setItem(SLOT_TODAY_KEY, JSON.stringify(today));
+    localStorage.setItem(SLOT_REMINDERS_KEY, JSON.stringify(reminders));
 
     // LONG · 过滤 active（paused 完全隐藏）
     const long = (state.long_projects || [])
