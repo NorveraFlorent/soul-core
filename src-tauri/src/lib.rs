@@ -49,12 +49,20 @@ async fn run_claude(
     prompt: &str,
     cwd: &std::path::Path,
 ) -> Result<(String, String, i32), String> {
+    // GUI 启动时 launchctl env 不读 ~/.zshrc，导致代理 / API key / claude auth 相关 env 缺失。
+    // /bin/bash -lc 是 login bash——读 .bash_profile 但不读 .zshrc。
+    // 用户默认 shell 多是 zsh，关键 env（proxy / brew shellenv / etc）在 .zshrc 里
+    // ——所以包一层 source，让 child env 拿到。POSIX export 语句 bash 完全能解析。
+    let wrapped_cmd = format!(
+        "[ -f \"$HOME/.zshrc\" ] && . \"$HOME/.zshrc\" 2>/dev/null; {}",
+        cmd_str
+    );
     log_diag(&format!("--- run_claude START cwd={:?} cmd={:?} prompt_len={}", cwd, cmd_str, prompt.len()));
 
     let mut child = Command::new("/bin/bash")
         .current_dir(cwd)
         .arg("-lc")
-        .arg(cmd_str)
+        .arg(&wrapped_cmd)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -124,24 +132,17 @@ async fn cc_chat(
         return Ok(stdout);
     }
 
-    // Fallback: 三种触发条件
+    // Fallback: 只在能明确判断"session state 不匹配"时反向尝试。
     //   1. stderr 含 "already in use" → 当前 --session-id 失败，转 --resume
     //   2. stderr 含 "not found" → 当前 --resume 失败，转 --session-id
-    //   3. silent failure（stderr 空）→ 反向尝试当前模式的对端（claude/daemon race 兜底）
+    // 注意：曾加过"stderr 空就反向 fallback"——但实测它会把 auth 错（stdout="403"，stderr 空）
+    // 误判成 session 错，反向尝试反而创建/破坏 session。撤掉了。
     if let Some(s) = sid {
         let lower = stderr.to_lowercase();
-        let stderr_empty = stderr.trim().is_empty();
         let try_alt = if !cont && (lower.contains("already") || lower.contains("in use") || lower.contains("exists")) {
             Some(format!("claude -p --resume {}", s))
         } else if cont && (lower.contains("not found") || lower.contains("does not exist") || lower.contains("no such")) {
             Some(format!("claude -p --session-id {}", s))
-        } else if stderr_empty {
-            // silent failure：claude CLI / bg daemon 时序问题。反向尝试一次
-            if cont {
-                Some(format!("claude -p --session-id {}", s))
-            } else {
-                Some(format!("claude -p --resume {}", s))
-            }
         } else {
             None
         };
