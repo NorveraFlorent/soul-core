@@ -5671,9 +5671,26 @@ zhiInit();
       const invoke = tauri?.core?.invoke;
       if (!invoke) throw new Error('Tauri invoke 未就绪，请在 dev/build 后运行');
       const sid = ensureSessionId();
-      const cont = isSessionStarted();
+      let cont = isSessionStarted();
       const promptWithCtx = buildContextPrefix() + text;
-      const reply = await invoke('cc_chat', { prompt: promptWithCtx, sessionId: sid, continueSession: cont });
+
+      // 自愈：localStorage 状态分裂时（session 文件已存在但 _started=false），
+      // 第一次发 --session-id 会触发 "already in use"。检测到则 mark started + 用 --resume 重试一次。
+      let reply;
+      try {
+        reply = await invoke('cc_chat', { prompt: promptWithCtx, sessionId: sid, continueSession: cont });
+      } catch (innerErr) {
+        const msg = String(innerErr).toLowerCase();
+        if (!cont && (msg.includes('already') || msg.includes('in use') || msg.includes('exists'))) {
+          console.warn('[cc-session 自愈] session 已存在但本地 _started=false，转 --resume 重试');
+          markSessionStarted();
+          cont = true;
+          reply = await invoke('cc_chat', { prompt: promptWithCtx, sessionId: sid, continueSession: true });
+        } else {
+          throw innerErr;
+        }
+      }
+
       if (!cont) markSessionStarted();
 
       // 抽 long_projects / task_groups fence（都抽出后再剥掉 fence 原文展示干净回复）

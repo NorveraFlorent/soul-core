@@ -100,6 +100,9 @@ async fn cc_chat(
             None
         };
         if let Some(alt_cmd) = try_alt {
+            // 让上一个失败的 claude 子进程退出状态完全稳定，避免和 fallback 起 race
+            // （观察过：紧贴重试时 alt 偶发 exit 1 空 stderr——状态分裂自愈场景里典型表现）
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
             let (stdout2, stderr2, code2) = run_claude(&alt_cmd, &prompt, &cwd).await?;
             if code2 == 0 {
                 return Ok(stdout2);
