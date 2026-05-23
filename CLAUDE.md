@@ -25,10 +25,13 @@ macOS 桌面 app（Tauri v2）—— 日常修证 + 长程项目 + 短程打勾�
 
 ## CC 桥接关键
 
-- `cc_chat` Tauri command 用 `bash -lc "claude -p"`（让 user shell PATH 生效找到 homebrew claude）
+- `cc_chat` Tauri command 用 `bash -lc` spawn 子进程（PATH / brew env 从 login profile 来）
+- **wrapper · source .zshrc**：bash login shell 读 `.bash_profile` 但**不读 `.zshrc`**。zsh user 的代理 / API key 都在 `.zshrc`，GUI 启动时 claude 拿不到代理 → 403。cmd_str 前 prepend `[ -f ~/.zshrc ] && . ~/.zshrc 2>/dev/null;` 修这条
 - session 持续：固定 cwd `~/.soul-core/cc/`（onboarding 用 `~/.soul-core/cc-onboarding/` 独立）
 - 第一次发用 `--session-id <uuid>` 创建；后续用 `--resume <uuid>` 续
-- 后端有 fallback：create 失败（`already in use`）自动切 resume；resume 失败（`not found`）自动切 create
+- 后端 fallback **仅在 stderr 明确匹配** "already in use" / "not found" 时反向尝试。**不要**加"silent failure 反向 fallback"——会把 auth 错（stderr 空、错误在 stdout）误判成 session 错
+- 错误信息必须 capture stdout：`Err(format!("claude exited with {}: stderr={:?} stdout={:?}", ...))` —— claude CLI 把部分错误写 stdout
+- 诊断 log：每次 `run_claude` 写 `/tmp/soul-core-cc-diag.log`（cmd / cwd / code / stderr / stdout 各 400 字符）——GUI 报错时直接 tail 看真因
 - session 文件落 `~/.claude/projects/-Users-<USER>--soul-core-cc/<uuid>.jsonl`（`<USER>` 为本机 macOS 账户名）
 - 自动 prefix `<soul-core-context>panel=… · date=… · 积分=…</soul-core-context>` 给 CC 看见当前状态（用户消息流隐藏）
 - panel=long 时 prefix 额外注入 `long_projects` 简版 + ops 协议（详见 panel-long 章节）
