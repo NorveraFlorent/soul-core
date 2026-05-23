@@ -367,12 +367,47 @@ async fn toggle_dashboard(app: tauri::AppHandle) -> Result<bool, String> {
         .get_webview_window("dashboard")
         .ok_or_else(|| "dashboard window not found".to_string())?;
     let visible = win.is_visible().map_err(|e| e.to_string())?;
+
+    // diag · 记录 dashboard 当前状态到 /tmp/soul-core-cc-diag.log
+    {
+        use std::io::Write;
+        let pos = win.outer_position().ok();
+        let size = win.outer_size().ok();
+        let always_on_top = win.is_always_on_top().ok();
+        let minimized = win.is_minimized().ok();
+        let msg = format!(
+            "[toggle_dashboard] visible={} pos={:?} size={:?} always_on_top={:?} minimized={:?}",
+            visible, pos, size, always_on_top, minimized
+        );
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true).append(true)
+            .open("/tmp/soul-core-cc-diag.log")
+        {
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs()).unwrap_or(0);
+            let _ = writeln!(f, "[t={}] {}", ts, msg);
+        }
+    }
+
     if visible {
         win.hide().map_err(|e| e.to_string())?;
         Ok(false)
     } else {
+        // 强制重新摆位 + 临时 always_on_top，破解"在屏幕外 / 在主端后面"问题
+        // 600,200 是一个稳定可见的初始位置
+        let _ = win.set_position(tauri::LogicalPosition::new(600.0_f64, 200.0_f64));
+        let _ = win.set_always_on_bottom(false);
+        let _ = win.set_always_on_top(true);
         win.show().map_err(|e| e.to_string())?;
         win.set_focus().map_err(|e| e.to_string())?;
+        // 2 秒后恢复 alwaysOnBottom（默认行为）
+        let win_clone = win.clone();
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            let _ = win_clone.set_always_on_top(false);
+            let _ = win_clone.set_always_on_bottom(true);
+        });
         Ok(true)
     }
 }
