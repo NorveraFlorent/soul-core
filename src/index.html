@@ -3905,8 +3905,70 @@ function loadState() {
 function saveState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    refreshDashboardSlots();
   } catch (e) { console.error(e); }
 }
+
+// ═══ dashboard 插槽 · 主端单向写、dashboard 单向读 ═══════════════════
+// 契约：
+//   soulcore_slot_today  [{id, label, group?}]   未做完的任务  · 写者=主端 / 读者=dashboard
+//   soulcore_slot_long   [{id, name, vibe}]      active 的长程 · 写者=主端 / 读者=dashboard
+//   soulcore_slot_intent {action, id, ts}        dashboard 反向信号 · 写者=dashboard / 读者=主端
+// 任何 saveState 都重写 today/long 两槽。主端 storage 监听 intent 把 toggle 回流。
+const SLOT_TODAY_KEY  = 'soulcore_slot_today';
+const SLOT_LONG_KEY   = 'soulcore_slot_long';
+const SLOT_INTENT_KEY = 'soulcore_slot_intent';
+
+function refreshDashboardSlots() {
+  try {
+    // TODAY · 拍平 task_groups + 过滤未做完
+    const today = [];
+    const week = weekStr();
+    for (const g of getTaskGroups()) {
+      for (const t of (g.tasks || [])) {
+        const isWeekly = t.weekly === true;
+        const done = isWeekly
+          ? state.weeklyTasks[t.id] === week
+          : !!state.todayTasks[t.id];
+        if (done) continue;
+        today.push({ id: t.id, label: t.name, group: g.name });
+      }
+    }
+    localStorage.setItem(SLOT_TODAY_KEY, JSON.stringify(today));
+
+    // LONG · 过滤 active（paused 完全隐藏）
+    const long = (state.long_projects || [])
+      .filter(p => (p.status || 'active') !== 'paused')
+      .map(p => ({ id: p.id, name: p.name, vibe: p.vibe || '' }));
+    localStorage.setItem(SLOT_LONG_KEY, JSON.stringify(long));
+  } catch (e) {
+    console.warn('[dashboard slots] refresh failed:', e);
+  }
+}
+
+// dashboard 点击 todo → 写 intent → 主端这里 handle → 调 toggleTask → saveState 自动重写槽
+window.addEventListener('storage', (e) => {
+  if (e.key !== SLOT_INTENT_KEY) return;
+  if (!e.newValue) return;  // 清空时也会触发，忽略
+  try {
+    const intent = JSON.parse(e.newValue);
+    if (intent && intent.action === 'toggle_today' && intent.id) {
+      // 找 task 拿 weekly flag
+      let task = null;
+      for (const g of getTaskGroups()) {
+        const t = (g.tasks || []).find(x => x.id === intent.id);
+        if (t) { task = t; break; }
+      }
+      if (task && typeof toggleTask === 'function') {
+        toggleTask(intent.id, !!task.weekly);
+      }
+    }
+    // 清空 intent（同 key 再写相同值不再 fire；写空字符串让 listener 早返回）
+    localStorage.setItem(SLOT_INTENT_KEY, '');
+  } catch (err) {
+    console.warn('[dashboard slots] intent handle failed:', err);
+  }
+});
 
 // 一次性：long_projects 空时塞种子；并从旧 demo localStorage 迁 sub-task 状态
 (function seedLongProjects() {
@@ -4726,6 +4788,7 @@ document.getElementById('reset-btn').addEventListener('click', resetAll);
 
 renderAll();
 bindLongActions();
+refreshDashboardSlots();   // 初始填充两个 dashboard 插槽，让 dashboard 即开即有内容
 bindTasksActions();
 bindCcNicknameEdit();
 

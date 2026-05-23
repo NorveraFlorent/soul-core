@@ -392,6 +392,16 @@
       text-align: center;
       padding: 12px 0 0;
     }
+    /* 插槽空态（TODAY/LONG 没数据时） */
+    .dashboard-slot-empty {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      color: rgba(250, 241, 220, 0.4);
+      text-align: center;
+      padding: 14px 0 4px;
+    }
 
     /* ───── body / brand / divider ───── */
     .dashboard-body {
@@ -730,53 +740,21 @@
       <!-- CD 视觉接力区 START -->
       <div class="dashboard-content" id="dashboard-content">
 
-        <!-- 一区 · TODAY -->
+        <!-- 一区 · TODAY · 接 soulcore_slot_today 插槽 -->
         <section class="widget-section widget-today" data-view="today">
           <div class="widget-label">
             <span>TODAY · 今日</span>
             <span class="widget-label-meta" id="dashboard-today-meta">— · —</span>
           </div>
-
-          <div class="todo-item" data-todo-id="t1" data-state="done">
-            <span class="todo-glyph"></span>
-            <span class="todo-label">子时静坐 三十分 <em class="todo-en">midnight sit</em></span>
-          </div>
-          <div class="todo-item" data-todo-id="t2" data-state="partial">
-            <span class="todo-glyph"></span>
-            <span class="todo-label">写 心舍 onboarding 文案 <em class="todo-en">copy draft</em></span>
-          </div>
-          <div class="todo-item" data-todo-id="t3" data-state="todo">
-            <span class="todo-glyph"></span>
-            <span class="todo-label">整理书房 · 西窗一角 <em class="todo-en">west corner</em></span>
-          </div>
-          <div class="todo-item" data-todo-id="t4" data-state="todo">
-            <span class="todo-glyph"></span>
-            <span class="todo-label">通话 · 师兄 <em class="todo-en">elder call</em></span>
-          </div>
-          <div class="todo-item" data-todo-id="t5" data-state="todo">
-            <span class="todo-glyph"></span>
-            <span class="todo-label">读 《道德经》 第二章 <em class="todo-en">tao · ii</em></span>
-          </div>
-          <div class="todo-item" data-todo-id="t6" data-state="todo">
-            <span class="todo-glyph"></span>
-            <span class="todo-label">晚课 · 护眼二十分 <em class="todo-en">evening eyes</em></span>
-          </div>
+          <div id="dashboard-today-list"></div>
         </section>
 
-        <!-- 二区 · LONG -->
+        <!-- 二区 · LONG · 接 soulcore_slot_long 插槽 -->
         <section class="widget-section widget-long" data-view="long">
           <div class="widget-label">
             <span>LONG · 长程</span>
           </div>
-
-          <div class="long-item">
-            <span class="long-name">心舍 · 整端落地</span>
-            <span class="long-vibe">小端先浮起来</span>
-          </div>
-          <div class="long-item">
-            <span class="long-name">太极 · 第二式</span>
-            <span class="long-vibe">已能不想 · 该练慢</span>
-          </div>
+          <div id="dashboard-long-list"></div>
         </section>
 
       </div>
@@ -964,21 +942,75 @@
         applyPin();
       }
 
-      // ─── todo 三态切换（○ → ◐ → ● 循环）+ localStorage ─────
-      // 真数据接入后此段会替换为读取 zhenyuan_quest_v1 today
-      const TODO_KEY = 'soulcore_dashboard_todo_demo';
-      const STATES = ['todo', 'partial', 'done'];
-      const savedStates = JSON.parse(localStorage.getItem(TODO_KEY) || '{}');
-      document.querySelectorAll('.todo-item').forEach(item => {
-        const id = item.dataset.todoId;
-        if (savedStates[id]) item.setAttribute('data-state', savedStates[id]);
-        item.addEventListener('click', () => {
-          const cur = item.getAttribute('data-state') || 'todo';
-          const next = STATES[(STATES.indexOf(cur) + 1) % STATES.length];
-          item.setAttribute('data-state', next);
-          savedStates[id] = next;
-          localStorage.setItem(TODO_KEY, JSON.stringify(savedStates));
+      // ─── dashboard 插槽渲染（接 soulcore_slot_today / soulcore_slot_long）─────
+      // 主端写两槽 + 监听 intent 回流；dashboard 读两槽 + 写 intent
+      // 契约形状见主端 refreshDashboardSlots 注释
+      const SLOT_TODAY_KEY  = 'soulcore_slot_today';
+      const SLOT_LONG_KEY   = 'soulcore_slot_long';
+      const SLOT_INTENT_KEY = 'soulcore_slot_intent';
+
+      function escHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      }
+      function loadSlot(key) {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : [];
+        } catch { return []; }
+      }
+
+      function renderToday() {
+        const items = loadSlot(SLOT_TODAY_KEY);
+        const list = document.getElementById('dashboard-today-list');
+        if (!list) return;
+        if (!Array.isArray(items) || items.length === 0) {
+          list.innerHTML = '<div class="dashboard-slot-empty">今日已尽 · all clear</div>';
+          return;
+        }
+        list.innerHTML = items.map(it =>
+          '<div class="todo-item" data-todo-id="' + escHtml(it.id) + '" data-state="todo">' +
+            '<span class="todo-glyph"></span>' +
+            '<span class="todo-label">' + escHtml(it.label) + '</span>' +
+          '</div>'
+        ).join('');
+        list.querySelectorAll('.todo-item').forEach(el => {
+          el.addEventListener('click', () => {
+            const id = el.dataset.todoId;
+            // 乐观视觉：立刻显 done，等主端回写新插槽后这条会自然消失
+            el.setAttribute('data-state', 'done');
+            try {
+              localStorage.setItem(SLOT_INTENT_KEY, JSON.stringify({
+                action: 'toggle_today', id, ts: Date.now()
+              }));
+            } catch (e) { console.warn('[slot] write intent failed:', e); }
+          });
         });
+      }
+
+      function renderLong() {
+        const items = loadSlot(SLOT_LONG_KEY);
+        const list = document.getElementById('dashboard-long-list');
+        if (!list) return;
+        if (!Array.isArray(items) || items.length === 0) {
+          list.innerHTML = '<div class="dashboard-slot-empty">尚无长程</div>';
+          return;
+        }
+        list.innerHTML = items.map(it =>
+          '<div class="long-item">' +
+            '<span class="long-name">' + escHtml(it.name) + '</span>' +
+            (it.vibe ? '<span class="long-vibe">' + escHtml(it.vibe) + '</span>' : '') +
+          '</div>'
+        ).join('');
+      }
+
+      // 初次渲染（dashboard 启动时主端可能还没刷过，但启动时已经 refreshDashboardSlots() 过）
+      renderToday();
+      renderLong();
+
+      // 监听插槽更新：主端任何 saveState 后两槽会重写，触发跨 window storage event
+      window.addEventListener('storage', (e) => {
+        if (e.key === SLOT_TODAY_KEY) renderToday();
+        else if (e.key === SLOT_LONG_KEY) renderLong();
       });
 
       // ─── 日/夜自动切换（按时间 + 每 15 分钟更新） ───
